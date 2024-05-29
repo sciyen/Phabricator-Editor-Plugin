@@ -1,12 +1,20 @@
 var editor_styles = `
+.editor-height-full {
+    height: 100vh !important;
+}
+
+.editor-height-half {
+    height: 50vh !important;
+}
+
 .editor-left-col {
     display: block;
     position: fixed;
     z-index: 15;
     left: 0;
-    top: 0;
+    bottom: 0;
     width: 50%;
-    height: 100vh;
+    iiheight: 100vh;
 }
 
 .editor-left-col textarea {
@@ -20,31 +28,34 @@ var editor_styles = `
     position: fixed;
     z-index: 15;
     left: 50%;
-    top: 0;
+    bottom: 0;
     width: 50%;
-    height: 100vh !important;
     overflow-y: scroll;
     background-color: rgba(250,250,250,1.0);
 }
 
-.editor-right-col .phabricator-remarkup {
-    height: 100vh;
-}
-
-#editor-enter-btn {
+.editor-btn {
     z-index: 20;
     position: fixed;
     padding: 0;
-    right: 50px;
-    top: 50px;
     width: 50px;
     height: 50px;
     border-radius: 50%;
     opacity: 0.7;
 }
 
-#editor-enter-btn p {
+.editor-btn p {
     text-align: center;
+}
+
+#editor-enter-btn {
+    right: 50px;
+    top: 50px;
+}
+
+#editor-size-btn {
+    right: 120px;
+    top: 50px;
 }
 `;
 // Inserting the styles to the head
@@ -81,6 +92,16 @@ class EditorMode {
     }
 }
 
+class EditorStyle {
+    static Full = new EditorStyle("Full", "editor-height-full");
+    static Half = new EditorStyle("Half", "editor-height-half");
+
+    constructor(name, style_name) {
+        this.name = name;
+        this.style_name = style_name;
+    }
+}
+
 /* To retrieve the Remarkup element.
  * Currently, the Task Maniphest, Event, and Comments are supported.
  */
@@ -109,7 +130,11 @@ function GetPreviewElement(edit_mode) {
         // If native preview is available, use the native one (real-time update)
         if (document.getElementsByClassName("phui-comment-preview-view").length > 0) {
             // For Comments preview
+            
+            // TODO: This causes the preview failed to update
+            // return document.getElementsByClassName("phui-comment-preview-view")[0].querySelector("div.phui-timeline-group");
             return document.getElementsByClassName("phui-comment-preview-view")[0];
+
         } else if (document.getElementsByClassName("phui-remarkup-preview").length > 0) {
             // For Task Maniphest preview
             return document.getElementsByClassName("phui-remarkup-preview")[0];
@@ -132,9 +157,11 @@ function GetPreviewElement(edit_mode) {
 }
 
 var editor_mode = "normal";
+var editor_style = EditorStyle.Full;
 
 var EditorEnterBtn = document.createElement("button");
 EditorEnterBtn.setAttribute("id", "editor-enter-btn");
+EditorEnterBtn.classList.add("editor-btn");
 EditorEnterBtn.innerHTML = `<p id="editor-text">Edit</p>`;
 
 EditorEnterBtn.onclick = (evt)=>{
@@ -149,17 +176,22 @@ EditorEnterBtn.onclick = (evt)=>{
     if (editor_mode === "normal") {
         editor_mode = "editor";
         RemarkupElement.classList.add("editor-left-col");
+        RemarkupElement.classList.add(editor_style.style_name);
 
         // Make the editor bar available
         RemarkupElement.classList.remove("remarkup-preview-active");
 
         PreviewElement.classList.add("editor-right-col");
+        PreviewElement.classList.add(editor_style.style_name);
         document.getElementById("editor-text").innerText = "Back";
     } else {
         editor_mode = "normal";
 
         RemarkupElement.classList.remove("editor-left-col");
+        RemarkupElement.classList.remove(editor_style.style_name);
+
         PreviewElement.classList.remove("editor-right-col");
+        PreviewElement.classList.remove(editor_style.style_name);
         document.getElementById("editor-text").innerText = "Edit";
 
         // Trigger the preview button to hide the preview, this must be called at the end to unset the preview
@@ -167,4 +199,25 @@ EditorEnterBtn.onclick = (evt)=>{
     }
 };
 
+var EditorSizeBtn = document.createElement("button");
+EditorSizeBtn.setAttribute("id", "editor-size-btn");
+EditorSizeBtn.classList.add("editor-btn");
+EditorSizeBtn.innerHTML = `<p id="editor-size-text">Half<br>Size</p>`;
+
+EditorSizeBtn.onclick = (evt)=>{
+    var [edit_mode, RemarkupElement] = GetRemarkupElement();
+    var PreviewElement = GetPreviewElement(edit_mode);
+
+    RemarkupElement.classList.remove(editor_style.style_name);
+    PreviewElement.classList.remove(editor_style.style_name);
+
+    // switch the style
+    editor_style = (editor_style === EditorStyle.Full) ? EditorStyle.Half : EditorStyle.Full;
+
+    EditorSizeBtn.innerText = editor_style.name;
+    RemarkupElement.classList.add(editor_style.style_name);
+    PreviewElement.classList.add(editor_style.style_name);
+};
+
 document.body.appendChild(EditorEnterBtn);
+document.body.appendChild(EditorSizeBtn);
