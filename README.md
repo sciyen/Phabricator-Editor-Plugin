@@ -33,3 +33,7 @@ to the bookmark bar of your browser.
 2. Copy the code and paste it into the URL field of a new bookmark manually.
 3. Copy the code from the URL field that you just pasted, and then paste it into this README.md file.
 4. (Optional) You can remove the extra spaces `    ` used in indentation in the code to make it more compact.
+5. Run the python script to automatically generate the inline js code
+    ```bash
+    python3 convert.py
+    ```
