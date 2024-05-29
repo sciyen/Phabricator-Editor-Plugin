@@ -2,7 +2,7 @@ var editor_styles = `
 .editor-left-col {
     display: block;
     position: fixed;
-    z-index: 7;
+    z-index: 15;
     left: 0;
     top: 0;
     width: 50%;
@@ -18,7 +18,7 @@ var editor_styles = `
 .editor-right-col {
     display: block;
     position: fixed;
-    z-index: 7;
+    z-index: 15;
     left: 50%;
     top: 0;
     width: 50%;
@@ -32,7 +32,7 @@ var editor_styles = `
 }
 
 #editor-enter-btn {
-    z-index: 8;
+    z-index: 20;
     position: fixed;
     padding: 0;
     right: 50px;
@@ -56,7 +56,9 @@ document.head.appendChild(styleSheet);
  * @param {boolean} preview_state - The state of the preview button (true: active, false: inactive)
  */
 function SetRemarkupPreview(preview_state) {
-    var PreviewBtn = document.querySelector("div.fa-eye").parentElement;
+    // If there has multiple preview buttons, choose the last one
+    const num_btn = document.querySelectorAll("div.fa-eye").length;
+    var PreviewBtn = document.querySelectorAll("div.fa-eye")[num_btn-1].parentElement;
     if (PreviewBtn == null) 
         return null;
     const current_state = PreviewBtn.classList.contains("preview-active");
@@ -66,30 +68,66 @@ function SetRemarkupPreview(preview_state) {
     return PreviewBtn;
 }
 
+class EditorMode {
+    static None = new EditorMode("None");
+    static Normal = new EditorMode("Normal");
+    static Task = new EditorMode("Task");
+    static Event = new EditorMode("Event");
+    static BlockEditor = new EditorMode("BlockEditor");
+    static NewComment = new EditorMode("NewComment");
+
+    constructor(name) {
+        this.name = name;
+    }
+}
+
 /* To retrieve the Remarkup element.
  * Currently, the Task Maniphest, Event, and Comments are supported.
  */
 function GetRemarkupElement() {
-    return document.getElementsByClassName("remarkup-assist-bar")[0].parentElement;
+    var assist_bar = document.getElementsByClassName("remarkup-assist-bar");
+    const edit_mode = (assist_bar.length > 1) ? EditorMode.BlockEditor : EditorMode.Normal;
+
+    var targetRemarkUpElement = assist_bar[assist_bar.length-1].parentElement;
+    targetRemarkUpElement.querySelector("textarea").focus();
+
+    // I don't know why I can not insert text into the textarea (maybe the php 
+    // backend can not detect the insertion done by js)
+    // if (targetRemarkUpElement.querySelector("lt-span").innerText === "") {
+    //     // Insert something into editor textarea
+    //     targetRemarkUpElement.querySelector("lt-span").innerText = "Type something here";
+    // } 
+    return [edit_mode, targetRemarkUpElement];
 }
 
 /* To retrieve the Preview element.
  * Currently, the Task Maniphest, Event, and Comments are supported.
  */
-function GetPreviewElement() {
-    // If native preview is available, use the native one (real-time update)
-    if (document.getElementsByClassName("phui-comment-preview-view").length > 0) {
-        // For Comments preview
-        return document.getElementsByClassName("phui-comment-preview-view")[0];
-    } else if (document.getElementsByClassName("phui-remarkup-preview").length > 0) {
-        // For Task Maniphest preview
-        return document.getElementsByClassName("phui-remarkup-preview")[0];
-    } else if (SetRemarkupPreview(true) !== null) {
-        // Trigger the preview button to show the preview, this must be called before using it (otherwise it does not exist)
-        // If native preview is not available, use the static preview
+function GetPreviewElement(edit_mode) {
+    // For those editing mode has real-time preview (e.g., Task Maniphest, New Comment)
+    if (edit_mode.name === EditorMode.Normal.name) {
+        // If native preview is available, use the native one (real-time update)
+        if (document.getElementsByClassName("phui-comment-preview-view").length > 0) {
+            // For Comments preview
+            return document.getElementsByClassName("phui-comment-preview-view")[0];
+        } else if (document.getElementsByClassName("phui-remarkup-preview").length > 0) {
+            // For Task Maniphest preview
+            return document.getElementsByClassName("phui-remarkup-preview")[0];
+        }
+    }
+
+    // If native preview is not available, use the static preview
+    // Note that since comment block editor does not support preview, we force to
+    // skip the above preview selection (to avoid selecting the preview for a new 
+    // comment).
+    // Event editor does not support preview (WTF?)
+    if (SetRemarkupPreview(true) !== null) {
+        // Trigger the preview button to show the preview, this must be called 
+        // before using it (otherwise it does not exist)
         if (document.getElementsByClassName("remarkup-inline-preview").length > 0)
             return document.getElementsByClassName("remarkup-inline-preview")[0];
     } 
+
     return null;
 }
 
@@ -100,8 +138,8 @@ EditorEnterBtn.setAttribute("id", "editor-enter-btn");
 EditorEnterBtn.innerHTML = `<p id="editor-text">Edit</p>`;
 
 EditorEnterBtn.onclick = (evt)=>{
-    var RemarkupElement = GetRemarkupElement();
-    var PreviewElement = GetPreviewElement();
+    var [edit_mode, RemarkupElement] = GetRemarkupElement();
+    var PreviewElement = GetPreviewElement(edit_mode);
 
     if (RemarkupElement === null || PreviewElement === null) {
         alert("Current page does not support editor mode!");
