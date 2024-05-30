@@ -130,10 +130,7 @@ function GetPreviewElement(edit_mode) {
         // If native preview is available, use the native one (real-time update)
         if (document.getElementsByClassName("phui-comment-preview-view").length > 0) {
             // For Comments preview
-            
-            // TODO: This causes the preview failed to update
-            // return document.getElementsByClassName("phui-comment-preview-view")[0].querySelector("div.phui-timeline-group");
-            return document.getElementsByClassName("phui-comment-preview-view")[0];
+            return document.getElementsByClassName("phui-comment-preview-view")[0].querySelector("div.phui-timeline-view");
 
         } else if (document.getElementsByClassName("phui-remarkup-preview").length > 0) {
             // For Task Maniphest preview
