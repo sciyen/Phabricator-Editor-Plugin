@@ -57,6 +57,11 @@ var editor_styles = `
     right: 120px;
     top: 50px;
 }
+
+.editor-move-down {
+    position: fixed;
+    bottom: 0;
+}
 `;
 // Inserting the styles to the head
 var styleSheet = document.createElement("style");
@@ -153,6 +158,19 @@ function GetPreviewElement(edit_mode) {
     return null;
 }
 
+function HideOriginalEditor(hide) {
+    var mask = document.getElementsByClassName("jx-mask")[0];
+    var originalEditor = document.getElementsByClassName("jx-client-dialog")[0];
+    if (hide) {
+        mask.style.display = "none";
+        originalEditor.classList.add("editor-move-down");
+    } else {
+        mask.style.display = "block";
+        originalEditor.classList.remove("editor-move-down");
+    }
+
+}
+
 var editor_mode = "normal";
 var editor_style = EditorStyle.Full;
 
@@ -181,6 +199,11 @@ EditorEnterBtn.onclick = (evt)=>{
         PreviewElement.classList.add("editor-right-col");
         PreviewElement.classList.add(editor_style.style_name);
         document.getElementById("editor-text").innerText = "Back";
+
+        // Hide the original editor, such that one can scroll over the content
+        if (edit_mode === EditorMode.BlockEditor) {
+            HideOriginalEditor(true);
+        }
     } else {
         editor_mode = "normal";
 
@@ -193,6 +216,11 @@ EditorEnterBtn.onclick = (evt)=>{
 
         // Trigger the preview button to hide the preview, this must be called at the end to unset the preview
         SetRemarkupPreview(false);
+
+        // Show the original editor
+        if (edit_mode === EditorMode.BlockEditor) {
+            HideOriginalEditor(false);
+        }
     }
 };
 
