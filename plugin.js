@@ -247,8 +247,174 @@ EditorSizeBtn.onclick = (evt)=>{
 document.body.appendChild(EditorEnterBtn);
 document.body.appendChild(EditorSizeBtn);
 
+/*
+ * Create element for find and replace tool box
+ */
+(() => {
+    const findReplaceDiv = document.createElement("div");
+    findReplaceDiv.innerHTML = `
+    <div id="find-replace-box" class="find-replace-box">
+        <input type="text" id="find-input" class="find-input" placeholder="Find">
+        <div title="Case sensitive">
+        <p>|Aa|</p>
+        <label class="switch">
+            <input id="capital-switch" type="checkbox">
+            <span class="slider round"></span>
+        </label>
+        </div>
+        <div title="Match whole word">
+        <p>[Aa]</p>
+        <label class="switch">
+            <input id="whole-word-switch" type="checkbox">
+            <span class="slider round"></span>
+        </label>
+        </div>
+        <button id="find-btn" class="find-btn">Find</button>
+        <input type="text" id="replace-input" class="replace-input" placeholder="Replace">
+        <div title="Replace All">
+        <p>All</p>
+        <label class="switch">
+            <input id="match-all-switch" type="checkbox">
+            <span class="slider round"></span>
+        </label>
+        </div>
+        <button id="replace-btn" class="replace-btn">Replace</button>
+    </div>`;
+    document.body.appendChild(findReplaceDiv);
 
-/**
+    // Create css for the find and replace tool box
+    // From https://www.w3schools.com/howto/howto_css_switch.asp
+    const findReplaceStyles = `
+    .find-replace-box {
+        position: fixed;
+        z-index: 100;
+        bottom: 0;
+        left: 0;
+        padding: 5px;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .find-replace-box div {
+        display: inline-block;
+        position: relative;
+        bottom: -8px;
+    }
+    .find-input, .replace-input {
+        padding: 2px;
+        margin: 2px;
+    }
+    .find-btn, .replace-btn {
+        padding: 2px;
+        margin: 2px;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 32px;
+        height: 18px;
+    }
+      
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+      
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 10px;
+        width: 10px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+      
+    input:checked + .slider {
+        background-color: #2196F3;
+    }
+      
+    input:focus + .slider {
+        box-shadow: 0 0 1px #2196F3;
+      }
+      
+    input:checked + .slider:before {
+        -webkit-transform: translateX(13px);
+        -ms-transform: translateX(13px);
+        transform: translateX(13px);
+    }
+      
+    .slider.round {
+        border-radius: 17px;
+    }
+      
+    .slider.round:before {
+        border-radius: 50%;
+    }
+    `;
+    const findReplaceStyleSheet = document.createElement("style");
+    findReplaceStyleSheet.innerText = findReplaceStyles;
+    document.head.appendChild(findReplaceStyleSheet);
+
+    // set up click event for find and replace
+    const findBtn = document.getElementById("find-btn");
+    const replaceBtn = document.getElementById("replace-btn");
+
+    function getSearchRegex (findText) {
+        // get search options from the switch input 
+        const caseSensitive = document.getElementById("capital-switch").checked;
+        const wholeWord = document.getElementById("whole-word-switch").checked;
+        const flags = caseSensitive ? "g" : "gi";
+        return new RegExp(wholeWord ? `\\b${findText}\\b` : findText, flags);
+    };
+
+    findBtn.onclick = () => {
+        var textarea = GetRemarkupElement()[1].querySelector("textarea");
+        const findText = document.getElementById("find-input").value;
+        const text = textarea.value;
+        var searchRegex = getSearchRegex(findText);
+        if (searchRegex.test(text)) {
+            const position = text.search(searchRegex);
+            textarea.setSelectionRange(position, position + findText.length);
+        }
+    };
+
+    replaceBtn.onclick = () => {
+        var textarea = GetRemarkupElement()[1].querySelector("textarea");
+        const findText = document.getElementById("find-input").value;
+        const replaceText = document.getElementById("replace-input").value;
+        const matchAll = document.getElementById("match-all-switch").checked;
+        var searchRegex = getSearchRegex(findText);
+        const text = textarea.value;
+        if (searchRegex.test(text)) {
+            if (matchAll) {
+                // using the regex to replace all the text
+                textarea.value = text.replace(searchRegex, replaceText);
+            } else {
+                const position = text.search(searchRegex);
+                textarea.setRangeText(replaceText, position, position + findText.length, 'select');
+            }
+        }
+    };
+})();
+
+/*
  * Hot key for the editor
  */
 const insertText = (textarea, token) => {
@@ -267,9 +433,12 @@ window.addEventListener("keydown", (event) => {
         let textarea = document.activeElement;
         if(event.ctrlKey && event.key === 'b') {
             insertText(textarea, '**');
+            event.preventDefault(); 
         } else if(event.ctrlKey && event.key == 'i') { 
             insertText(textarea, '//');
+            event.preventDefault(); 
+        } else if(event.ctrlKey && event.key == 'f') { 
+            // textarea.value
         }
-        event.preventDefault(); 
     }
 });
