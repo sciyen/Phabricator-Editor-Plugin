@@ -246,3 +246,30 @@ EditorSizeBtn.onclick = (evt)=>{
 
 document.body.appendChild(EditorEnterBtn);
 document.body.appendChild(EditorSizeBtn);
+
+
+/**
+ * Hot key for the editor
+ */
+const insertText = (textarea, token) => {
+    const position = textarea.selectionStart;
+    // const end = position + text.length;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = token + window.getSelection().toString() + token;
+    textarea.setRangeText(text, start, end, 'select');
+};
+
+window.addEventListener("keydown", (event) => {
+    if (document.activeElement.type == 'textarea' ){
+        // insert text into textarea: 
+        // https://phuoc.ng/collection/html-dom/insert-text-into-a-text-area-at-the-current-position/
+        let textarea = document.activeElement;
+        if(event.ctrlKey && event.key === 'b') {
+            insertText(textarea, '**');
+        } else if(event.ctrlKey && event.key == 'i') { 
+            insertText(textarea, '//');
+        }
+        event.preventDefault(); 
+    }
+});
