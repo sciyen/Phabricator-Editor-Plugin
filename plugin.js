@@ -439,6 +439,22 @@ window.addEventListener("keydown", (event) => {
             event.preventDefault(); 
         } else if(event.ctrlKey && event.key == 'f') { 
             // textarea.value
+        } else if (event.key == '`') {
+            insertText(textarea, '`');
+            event.preventDefault();
+        } else if(event.key == 'Tab') { 
+            // if selection is not empty, indent the selected text
+            var start = textarea.selectionStart;
+            // find the last line break before the start position
+            while (start > 0 && textarea.value[start] != '\n') {
+                start--;
+            }
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selectedText = text.substring(start, end);
+            const newText = selectedText.split('\n').map(line => '  ' + line).join('\n');
+            textarea.setRangeText(newText, start, end, 'select');
+            event.preventDefault(); 
         }
     }
 });
