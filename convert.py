@@ -7,7 +7,7 @@ with open('plugin.js', 'r') as file:
         # read the content of the file
         content = file.read()
         # replace all comments with empty string
-        content = re.sub(r'//.*', '', content)
+        content = re.sub(r'(\s|\w)//.*', '', content)
 
         # replace all comments with empty string
         content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
