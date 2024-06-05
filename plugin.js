@@ -458,3 +458,55 @@ window.addEventListener("keydown", (event) => {
         }
     }
 });
+
+// Insert block id to all the timeline extra element
+(()=>{
+    // Insert css for the block id
+    const blockIdStyles = `
+    .phui-timeline-extra .block-id {
+        margin-left: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    .phui-timeline-extra .block-id:hover {
+        cursor: pointer;
+    }
+    .phui-timeline-extra .block-id.show-copied {
+        background-color: #4CAF50;
+        padding-left: 2px;
+        padding-right: 2px;
+        color: white;
+    }
+    `;
+    const blockIdStyleSheet = document.createElement("style");
+    blockIdStyleSheet.innerText = blockIdStyles;
+    document.head.appendChild(blockIdStyleSheet);
+
+    var timeline_extra = document.querySelectorAll('.phui-timeline-extra');
+    for (var i = 0; i < timeline_extra.length; i++) {
+        var stamp_element = timeline_extra[i].querySelector('a');
+        // get href
+        var href = stamp_element.getAttribute('href');
+        
+        // insert a span element to show the href
+        var span = document.createElement('span');
+        span.classList.add('block-id');
+        span.innerText = href;
+        span.setAttribute('title', 'Copy to clipboard');
+        // Add an event listener to the stamp element, such that when the user click the stamp, the href will be copied to the clipboard
+        span.onclick = (evt) => {
+            const href = evt.target.innerText;
+            navigator.clipboard.writeText(href);
+
+            // show the copied message
+            evt.target.innerText = 'Copied!';
+            evt.target.classList.add('show-copied');
+            setTimeout(() => {
+                evt.target.innerText = href;
+                evt.target.classList.remove('show-copied');
+            }, 1000);
+        };
+
+        timeline_extra[i].appendChild(span);
+    };
+})()
