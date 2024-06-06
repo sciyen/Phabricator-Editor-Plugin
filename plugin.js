@@ -381,6 +381,9 @@ document.body.appendChild(EditorSizeBtn);
         const caseSensitive = document.getElementById("capital-switch").checked;
         const wholeWord = document.getElementById("whole-word-switch").checked;
         const flags = caseSensitive ? "g" : "gi";
+
+        // Add prefix to reserved characters in regex
+        findText = findText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         return new RegExp(wholeWord ? `\\b${findText}\\b` : findText, flags);
     };
 
