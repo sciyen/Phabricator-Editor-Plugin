@@ -254,31 +254,36 @@ document.body.appendChild(EditorSizeBtn);
     const findReplaceDiv = document.createElement("div");
     findReplaceDiv.innerHTML = `
     <div id="find-replace-box" class="find-replace-box">
-        <input type="text" id="find-input" class="find-input" placeholder="Find">
-        <div title="Case sensitive">
-        <p>|Aa|</p>
-        <label class="switch">
-            <input id="capital-switch" type="checkbox">
-            <span class="slider round"></span>
-        </label>
+        <div>
+            <input type="text" id="find-input" class="find-input" placeholder="Find">
+            <div id="span-num-text-found"></div>
+            <div title="Case sensitive">
+                <span>|Aa|</span>
+                <label class="switch">
+                    <input id="capital-switch" type="checkbox">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div title="Match whole word">
+                <span>[Aa]</span>
+                <label class="switch">
+                    <input id="whole-word-switch" type="checkbox">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <button id="find-btn" class="find-btn">Find</button>
         </div>
-        <div title="Match whole word">
-        <p>[Aa]</p>
-        <label class="switch">
-            <input id="whole-word-switch" type="checkbox">
-            <span class="slider round"></span>
-        </label>
+        <div>
+            <input type="text" id="replace-input" class="replace-input" placeholder="Replace">
+            <div title="Replace All">
+                <span>All</span>
+                <label class="switch">
+                    <input id="match-all-switch" type="checkbox">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <button id="replace-btn" class="replace-btn">Replace</button>
         </div>
-        <button id="find-btn" class="find-btn">Find</button>
-        <input type="text" id="replace-input" class="replace-input" placeholder="Replace">
-        <div title="Replace All">
-        <p>All</p>
-        <label class="switch">
-            <input id="match-all-switch" type="checkbox">
-            <span class="slider round"></span>
-        </label>
-        </div>
-        <button id="replace-btn" class="replace-btn">Replace</button>
     </div>`;
     document.body.appendChild(findReplaceDiv);
 
@@ -291,14 +296,19 @@ document.body.appendChild(EditorSizeBtn);
         bottom: 0;
         left: 0;
         padding: 5px;
-        background-color: white;
+        background-color: rgba(250,250,250,0.2);
         border: 1px solid #ccc;
         border-radius: 5px;
     }
     .find-replace-box div {
         display: inline-block;
         position: relative;
-        bottom: -8px;
+        margin-left: 3px;
+        margin-right: 3px;
+    }
+    .find-replace-box > div {
+        padding-left: 10px;
+        padding-right: 10px;
     }
     .find-input, .replace-input {
         padding: 2px;
@@ -390,13 +400,39 @@ document.body.appendChild(EditorSizeBtn);
     findBtn.onclick = () => {
         var textarea = GetRemarkupElement()[1].querySelector("textarea");
         const findText = document.getElementById("find-input").value;
+
         const text = textarea.value;
         var searchRegex = getSearchRegex(findText);
-        if (searchRegex.test(text)) {
-            const position = text.search(searchRegex);
-            textarea.setSelectionRange(position, position + findText.length);
+
+        const num_text_found = ((text || '').match(searchRegex) || []).length;
+        if (num_text_found !== 0) {
+            do {
+                var current_selected_index = textarea.selectionEnd;
+                var text_below_cursor = text.substring(current_selected_index);
+                var num_text_found_here = ((text_below_cursor || '').match(searchRegex) || []).length;
+
+                if (num_text_found_here === 0 && num_text_found > 0) {
+                    // if the text is not found below the cursor, search from the beginning
+                    textarea.setSelectionRange(0, 0);
+                    text_below_cursor = text;
+                    current_selected_index = 0;
+                } else {
+                    const position = text_below_cursor.search(searchRegex) + current_selected_index;
+                    textarea.setSelectionRange(position, position + findText.length);
+                    document.getElementById("span-num-text-found").innerText = `${num_text_found-num_text_found_here+1} / ${num_text_found}`;
+                }
+            } while (num_text_found_here === 0 && num_text_found > 0);
+        } else {
+            document.getElementById("span-num-text-found").innerText = "0 / 0";
         }
     };
+
+    document.getElementById('find-input').addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            document.getElementById('find-btn').click();
+        }
+    });
 
     replaceBtn.onclick = () => {
         var textarea = GetRemarkupElement()[1].querySelector("textarea");
