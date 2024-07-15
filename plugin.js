@@ -543,6 +543,26 @@ window.addEventListener("keydown", (event) => {
         color: white;
     }
     `;
+    
+    // Retrieve task id
+    const task_id = (() => {
+        const crumb_node = document.getElementsByClassName("phabricator-last-crumb")[0];
+        if (crumb_node !== null) {
+            const crumb_name = crumb_node.getElementsByClassName("phui-crumb-name")[0].innerText;
+            // remove spaces
+            return crumb_name.replace(/\s/g, '');
+        } else {
+            // try to parse from url
+            const url = window.location.href;
+
+            // This only works for tasks and events
+            const task_id = url.match(/[T|E]\d{4}/);
+
+            // It will return null if the id is not found
+            return task_id;
+        }
+    })();
+
     const blockIdStyleSheet = document.createElement("style");
     blockIdStyleSheet.innerText = blockIdStyles;
     document.head.appendChild(blockIdStyleSheet);
@@ -553,7 +573,7 @@ window.addEventListener("keydown", (event) => {
         
         if (stamp_element !== null) {
             // get href
-            var href = stamp_element.getAttribute('href');
+            var href = task_id + stamp_element.getAttribute('href');
             
             // insert a span element to show the href
             var span = document.createElement('span');
