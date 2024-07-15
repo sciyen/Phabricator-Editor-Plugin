@@ -489,10 +489,17 @@ window.addEventListener("keydown", (event) => {
             // if selection is not empty, indent the selected text
             var start = textarea.selectionStart;
             // find the last line break before the start position
-            while (start > 0 && textarea.value[start] != '\n') {
+            while (start > 0 && textarea.value[start-1] != '\n') {
+                // (start-1) avoids additional space at the end of previous line
                 start--;
             }
-            const end = textarea.selectionEnd;
+
+            // This avoids un-captured case when the cursor is at the beginning of the line
+            var end = textarea.selectionEnd;
+            while (end < textarea.value.length && textarea.value[end+1] != '\n') {
+                end++;
+            }
+
             const text = textarea.value;
             const selectedText = text.substring(start, end);
             const newText = selectedText.split('\n').map((line) => {
@@ -506,9 +513,7 @@ window.addEventListener("keydown", (event) => {
                 }
             }).join('\n');
             
-            // To enable selection after indenting the text, uncomment the following line
-            // textarea.setRangeText(newText, start, end, 'select');
-            textarea.setRangeText(newText, start, end, 'end');
+            textarea.setRangeText(newText, start, end, 'select');
             event.preventDefault(); 
         }
     }
