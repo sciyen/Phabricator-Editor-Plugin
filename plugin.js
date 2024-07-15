@@ -495,6 +495,16 @@ window.addEventListener("keydown", (event) => {
             const end = textarea.selectionEnd;
             const text = textarea.value;
             const selectedText = text.substring(start, end);
+            const newText = selectedText.split('\n').map((line) => {
+                if (event.shiftKey) {                    
+                    // if shift is pressed, unindent the selected text
+                    // remove the two spaces at the beginning of the line
+                    return line.replace(/^  /, '');
+                } else {
+                    // indent
+                    return '  ' + line;
+                }
+            }).join('\n');
             
             // To enable selection after indenting the text, uncomment the following line
             // textarea.setRangeText(newText, start, end, 'select');
