@@ -472,9 +472,13 @@ window.addEventListener("keydown", (event) => {
         let textarea = document.activeElement;
         if(event.ctrlKey && event.key === 'b') {
             insertText(textarea, '**');
+            // cancel selection and go to the last position of the inserted text
+            textarea.setSelectionRange(textarea.selectionEnd - 2, textarea.selectionEnd - 2);
             event.preventDefault(); 
         } else if(event.ctrlKey && event.key == 'i') { 
             insertText(textarea, '//');
+            // cancel selection and go to the last position of the inserted text
+            textarea.setSelectionRange(textarea.selectionEnd - 2, textarea.selectionEnd - 2);
             event.preventDefault(); 
         } else if(event.ctrlKey && event.key == 'f') { 
             // textarea.value
@@ -491,8 +495,10 @@ window.addEventListener("keydown", (event) => {
             const end = textarea.selectionEnd;
             const text = textarea.value;
             const selectedText = text.substring(start, end);
-            const newText = selectedText.split('\n').map(line => '  ' + line).join('\n');
-            textarea.setRangeText(newText, start, end, 'select');
+            
+            // To enable selection after indenting the text, uncomment the following line
+            // textarea.setRangeText(newText, start, end, 'select');
+            textarea.setRangeText(newText, start, end, 'end');
             event.preventDefault(); 
         }
     }
