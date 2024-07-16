@@ -14,12 +14,15 @@ var editor_styles = `
     left: 0;
     bottom: 0;
     width: 50%;
-    iiheight: 100vh;
-}
+    height: 100vh;
+}   
 
 .editor-left-col textarea {
+    position: absolute;
     display: block !important;
     height: 100% !important;
+    z-index: 16;
+    background-color: transparent !important;
 }
 
 .background-force-while {
@@ -64,6 +67,55 @@ var editor_styles = `
 .editor-move-down {
     position: fixed;
     bottom: 0;
+}
+
+.back-drop {
+    position: absolute;
+    z-index: 15;
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+    padding: 4px 6px;
+    box-sizing: border-box;
+    border: 1px solid #A1A6B0;
+    background-color: #F8F9FA;
+}
+
+.highlights {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: transparent;
+}
+
+mark {
+  color: transparent;
+}
+
+mark.long-bar::after {
+  content: "";
+  width: 100%;
+  position: absolute;
+  left: 0px;
+}
+
+mark.heading-1::after {
+  height: 26px;
+  background: #d4e9ab;
+}
+
+mark.heading-2::after {
+  height: 18px;
+  background: #d4e9cd;
+}
+
+mark.heading-3::after {
+  height: 10px;
+  background: #d4e9ef;
+}
+  
+mark.heading-4::after {
+  height: 10px;
+  background: #d4faef;
 }
 `;
 // Inserting the styles to the head
@@ -208,6 +260,48 @@ EditorEnterBtn.onclick = (evt)=>{
         if (edit_mode === EditorMode.BlockEditor) {
             HideOriginalEditor(true);
         }
+
+        // Insert text hightlight container for the textarea
+        var textarea = RemarkupElement.querySelector("textarea");
+        var highlight_container = textarea.parentElement.insertBefore(document.createElement("div"), textarea);
+        highlight_container.classList.add("back-drop");
+        highlight_container.setAttribute("id", "back-drop");
+        highlight_container.innerHTML = `<div id="div-highlights" class="highlights PhabricatorMonospaced"></div>`;
+
+        textarea.addEventListener("input", (evt) => {
+            var text = evt.target.value;
+            var highlightedText = ((text)=>{
+                return text
+                    .replace(/\n$/g, '\n\n')
+                    .replace(/^#{1}\s*\b/gm, function (a, b) {
+                        // Heading 1
+                        return '<mark class="long-bar heading-1">' + a + '</mark>';
+                    })
+                    .replace(/^#{2}\s*\b/gm, function (a, b) {
+                        // Heading 2
+                        return '<mark class="long-bar heading-2">' + a + '</mark>';
+                    })
+                    .replace(/^#{3}\s*\b/gm, function (a, b) {
+                        // Heading 3
+                        return '<mark class="long-bar heading-3">' + a + '</mark>';
+                    })
+                    .replace(/^#{4}\s*\b/gm, function (a, b) {
+                        // Heading 4
+                        return '<mark class="long-bar heading-4">' + a + '</mark>';
+                    })
+                    // .replace(/[A-Z].*?\b/g, function (a, b) {
+                    //     return '<mark>' + a + '</mark>';
+                    // })
+            })(text);
+            evt.target.parentElement.querySelector("#div-highlights").innerHTML = highlightedText;
+        });
+        // Trigger the input event for the first time
+        textarea.dispatchEvent(new Event('input'));
+
+        textarea.addEventListener("scroll", (evt) => {
+            var scrollTop = evt.target.scrollTop;
+            evt.target.parentElement.getElementsByClassName("back-drop")[0].scrollTop = scrollTop;
+        });
     } else {
         editor_mode = "normal";
 
@@ -226,6 +320,10 @@ EditorEnterBtn.onclick = (evt)=>{
         if (edit_mode === EditorMode.BlockEditor) {
             HideOriginalEditor(false);
         }
+
+        // delete the highlight container
+        var highlight_container = RemarkupElement.querySelector("#back-drop");
+        RemarkupElement.removeChild(highlight_container);
     }
 };
 
