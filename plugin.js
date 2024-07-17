@@ -87,35 +87,62 @@ var editor_styles = `
   color: transparent;
 }
 
-mark {
+marker {
   color: transparent;
 }
 
-mark.long-bar::after {
+marker.bold {
+  font-weight: bold;
+  color: black;
+}
+
+marker.long-bar::after {
   content: "";
   width: 100%;
   position: absolute;
   left: 0px;
 }
 
-mark.heading-1::after {
+marker.heading-1::after {
   height: 26px;
   background: #d4e9ab;
 }
 
-mark.heading-2::after {
+marker.heading-2::after {
   height: 18px;
   background: #d4e9cd;
 }
 
-mark.heading-3::after {
+marker.heading-3::after {
   height: 10px;
   background: #d4e9ef;
 }
   
-mark.heading-4::after {
+marker.heading-4::after {
   height: 10px;
   background: #d4faef;
+}
+
+marker.circle::after {
+  content: "";
+  position: absolute;
+  margin-left: -1.5em;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+}
+
+marker.bullet::after {
+  background: #ecaaef;
+}
+
+marker.number::after {
+  background: #aaecef;
+}
+
+marker.border {
+  background-color: transparent;
+  box-shadow: #ee99aa 0px 0px 2px 2px;
 }
 `;
 // Inserting the styles to the head
@@ -273,25 +300,42 @@ EditorEnterBtn.onclick = (evt)=>{
             var highlightedText = ((text)=>{
                 return text
                     .replace(/\n$/g, '\n\n')
-                    .replace(/^#{1}\s*\b/gm, function (a, b) {
+                    .replace(/^#{1}\w.*\b/gm, function (a, b) {
                         // Heading 1
-                        return '<mark class="long-bar heading-1">' + a + '</mark>';
+                        return '<marker class="bold long-bar heading-1">' + a + '</marker>';
                     })
-                    .replace(/^#{2}\s*\b/gm, function (a, b) {
+                    .replace(/^#{2}\w.*\b/gm, function (a, b) {
                         // Heading 2
-                        return '<mark class="long-bar heading-2">' + a + '</mark>';
+                        return '<marker class="bold long-bar heading-2">' + a + '</marker>';
                     })
-                    .replace(/^#{3}\s*\b/gm, function (a, b) {
+                    .replace(/^#{3}\w.*\b/gm, function (a, b) {
                         // Heading 3
-                        return '<mark class="long-bar heading-3">' + a + '</mark>';
+                        return '<marker class="bold long-bar heading-3">' + a + '</marker>';
                     })
-                    .replace(/^#{4}\s*\b/gm, function (a, b) {
+                    .replace(/^#{4}\w.*\b/gm, function (a, b) {
                         // Heading 4
-                        return '<mark class="long-bar heading-4">' + a + '</mark>';
+                        return '<marker class="bold long-bar heading-4">' + a + '</marker>';
                     })
-                    // .replace(/[A-Z].*?\b/g, function (a, b) {
-                    //     return '<mark>' + a + '</mark>';
-                    // })
+                    .replace(/\*\*.*?\*\*/gm, function (a, b) {
+                        // Bold
+                        return '<marker class="bold">' + a + '</marker>';
+                    })
+                    .replace(/^(\s*(\-|\+)\s)/gm, function (a, b) {
+                        // Bullet
+                        return '<marker class="circle bullet">' + a + '</marker>';
+                    })
+                    .replace(/^(\d+\.\s)/gm, function (a, b) {
+                        // Number list
+                        return '<marker class="circle number">' + a + '</marker>';
+                    })
+                    .replace(/\{.*?\}/g, function (a, b) {
+                        // {}
+                        return '<marker class="border parantheless">' + a + '</marker>';
+                    }) 
+                    .replace(/\[.*?\]/g, function (a, b) {
+                        // []
+                        return '<marker class="border parantheless">' + a + '</marker>';
+                    })
             })(text);
             evt.target.parentElement.querySelector("#div-highlights").innerHTML = highlightedText;
         });
