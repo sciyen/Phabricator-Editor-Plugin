@@ -78,7 +78,7 @@ var editor_styles = `
     padding: 4px 6px;
     box-sizing: border-box;
     border: 1px solid #A1A6B0;
-    background-color: #F8F9FA;
+    background-color: var(--lt-color-background-primary);
 }
 
 .highlights {
@@ -93,7 +93,7 @@ marker {
 
 marker.bold {
   font-weight: bold;
-  color: black;
+  color: var(--lt-color-text-primary);
 }
 
 marker.long-bar::after {
@@ -105,22 +105,22 @@ marker.long-bar::after {
 
 marker.heading-1::after {
   height: 26px;
-  background: #d4e9ab;
+  background: var(--lt-color-heading-1);
 }
 
 marker.heading-2::after {
   height: 18px;
-  background: #d4e9cd;
+  background: var(--lt-color-heading-2);
 }
 
 marker.heading-3::after {
   height: 10px;
-  background: #d4e9ef;
+  background: var(--lt-color-heading-3);
 }
   
 marker.heading-4::after {
   height: 10px;
-  background: #d4faef;
+  background: var(--lt-color-heading-4);
 }
 
 marker.circle::after {
@@ -145,6 +145,42 @@ marker.border {
   box-shadow: #ee99aa 0px 0px 2px 2px;
 }
 `;
+
+
+// Set up primary colors
+(()=>{
+    // check if the background color is light or dark
+    function isLight(color) {
+        const rgb = color.match(/\d+/g);
+        const brightness = Math.round(((parseInt(rgb[0]) * 299) +
+            (parseInt(rgb[1]) * 587) +
+            (parseInt(rgb[2]) * 114)) / 1000);
+        return brightness > 155;
+    }
+    
+    // get the color of the background
+    function getBackgroundColor() {
+        const style = getComputedStyle(document.body);
+        return style.backgroundColor;
+    }
+
+    const color_mode = isLight(getBackgroundColor()) ? "light" : "dark";
+    var editor_root_styles = `
+    :root {
+        --lt-color-background-darkmode: #2c405a;
+        --lt-color-text-primary: var(${(color_mode === 'light') ? '--lt-color-text-dark' : '--lt-color-white'});
+        --lt-color-background-primary: var(${(color_mode === 'light') ? '--lt-color-background-light' : '--lt-color-background-darkmode'});
+        --lt-color-heading-1: ${(color_mode === 'light') ? '#d4e9ab' : '#667744'};
+        --lt-color-heading-2: ${(color_mode === 'light') ? '#d4e9cd' : '#667755'};
+        --lt-color-heading-3: ${(color_mode === 'light') ? '#d4e9ef' : '#667766'};
+        --lt-color-heading-4: ${(color_mode === 'light') ? '#d4faef' : '#668866'};
+    }
+    `;
+    var editor_root_style = document.createElement("style");
+    editor_root_style.innerText = editor_root_styles;
+    document.head.appendChild(editor_root_style);
+})();
+
 // Inserting the styles to the head
 var styleSheet = document.createElement("style");
 styleSheet.innerText = editor_styles;
