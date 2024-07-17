@@ -329,59 +329,65 @@ EditorEnterBtn.onclick = (evt)=>{
         var highlight_container = textarea.parentElement.insertBefore(document.createElement("div"), textarea);
         highlight_container.classList.add("back-drop");
         highlight_container.setAttribute("id", "back-drop");
-        highlight_container.innerHTML = `<div id="div-highlights" class="highlights PhabricatorMonospaced"></div>`;
+        
+        // check if PhabricatorMonospaced appears in the textarea's class
+        var textarea_class = textarea.getAttribute("class");
+        if (textarea_class.includes("PhabricatorMonospaced") === true) {
+            var PhabricatorMonospaced = (textarea_class.includes("PhabricatorMonospaced")) ? "PhabricatorMonospaced" : "";
+            highlight_container.innerHTML = `<div id="div-highlights" class="highlights ${PhabricatorMonospaced}"></div>`;
 
-        textarea.addEventListener("input", (evt) => {
-            var text = evt.target.value;
-            var highlightedText = ((text)=>{
-                return text
-                    .replace(/\n$/g, '\n\n')
-                    .replace(/^#{1}\w.*\b/gm, function (a, b) {
-                        // Heading 1
-                        return '<marker class="bold long-bar heading-1">' + a + '</marker>';
-                    })
-                    .replace(/^#{2}\w.*\b/gm, function (a, b) {
-                        // Heading 2
-                        return '<marker class="bold long-bar heading-2">' + a + '</marker>';
-                    })
-                    .replace(/^#{3}\w.*\b/gm, function (a, b) {
-                        // Heading 3
-                        return '<marker class="bold long-bar heading-3">' + a + '</marker>';
-                    })
-                    .replace(/^#{4}\w.*\b/gm, function (a, b) {
-                        // Heading 4
-                        return '<marker class="bold long-bar heading-4">' + a + '</marker>';
-                    })
-                    .replace(/\*\*.*?\*\*/gm, function (a, b) {
-                        // Bold
-                        return '<marker class="bold">' + a + '</marker>';
-                    })
-                    .replace(/^(\s*(\-|\+)\s)/gm, function (a, b) {
-                        // Bullet
-                        return '<marker class="circle bullet">' + a + '</marker>';
-                    })
-                    .replace(/^(\d+\.\s)/gm, function (a, b) {
-                        // Number list
-                        return '<marker class="circle number">' + a + '</marker>';
-                    })
-                    .replace(/\{.*?\}/g, function (a, b) {
-                        // {}
-                        return '<marker class="border parantheless">' + a + '</marker>';
-                    }) 
-                    .replace(/\[.*?\]/g, function (a, b) {
-                        // []
-                        return '<marker class="border parantheless">' + a + '</marker>';
-                    })
-            })(text);
-            evt.target.parentElement.querySelector("#div-highlights").innerHTML = highlightedText;
-        });
-        // Trigger the input event for the first time
-        textarea.dispatchEvent(new Event('input'));
+            textarea.addEventListener("input", (evt) => {
+                var text = evt.target.value;
+                var highlightedText = ((text)=>{
+                    return text
+                        .replace(/\n$/g, '\n\n')
+                        .replace(/^#{1}\w.*\b/gm, function (a, b) {
+                            // Heading 1
+                            return '<marker class="bold long-bar heading-1">' + a + '</marker>';
+                        })
+                        .replace(/^#{2}\w.*\b/gm, function (a, b) {
+                            // Heading 2
+                            return '<marker class="bold long-bar heading-2">' + a + '</marker>';
+                        })
+                        .replace(/^#{3}\w.*\b/gm, function (a, b) {
+                            // Heading 3
+                            return '<marker class="bold long-bar heading-3">' + a + '</marker>';
+                        })
+                        .replace(/^#{4}\w.*\b/gm, function (a, b) {
+                            // Heading 4
+                            return '<marker class="bold long-bar heading-4">' + a + '</marker>';
+                        })
+                        .replace(/\*\*.*?\*\*/gm, function (a, b) {
+                            // Bold
+                            return '<marker class="bold">' + a + '</marker>';
+                        })
+                        .replace(/^(\s*(\-|\+)\s)/gm, function (a, b) {
+                            // Bullet
+                            return '<marker class="circle bullet">' + a + '</marker>';
+                        })
+                        .replace(/^(\d+\.\s)/gm, function (a, b) {
+                            // Number list
+                            return '<marker class="circle number">' + a + '</marker>';
+                        })
+                        .replace(/\{.*?\}/g, function (a, b) {
+                            // {}
+                            return '<marker class="border parantheless">' + a + '</marker>';
+                        }) 
+                        .replace(/\[.*?\]/g, function (a, b) {
+                            // []
+                            return '<marker class="border parantheless">' + a + '</marker>';
+                        })
+                })(text);
+                evt.target.parentElement.querySelector("#div-highlights").innerHTML = highlightedText;
+            });
+            // Trigger the input event for the first time
+            textarea.dispatchEvent(new Event('input'));
 
-        textarea.addEventListener("scroll", (evt) => {
-            var scrollTop = evt.target.scrollTop;
-            evt.target.parentElement.getElementsByClassName("back-drop")[0].scrollTop = scrollTop;
-        });
+            textarea.addEventListener("scroll", (evt) => {
+                var scrollTop = evt.target.scrollTop;
+                evt.target.parentElement.getElementsByClassName("back-drop")[0].scrollTop = scrollTop;
+            });
+        }
     } else {
         editor_mode = "normal";
 
