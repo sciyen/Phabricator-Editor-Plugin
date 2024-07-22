@@ -25,10 +25,6 @@ var editor_styles = `
     background-color: transparent !important;
 }
 
-.background-force-while {
-    background-color: rgba(250,250,250,1.0) !important;
-}
-
 .editor-right-col {
     display: block;
     position: fixed;
@@ -37,7 +33,7 @@ var editor_styles = `
     bottom: 0;
     width: 50%;
     overflow-y: scroll;
-    background-color: rgba(250,250,250,1.0);
+    background-color: var(--lt-color-background-primary);
 }
 
 .editor-btn {
@@ -310,7 +306,6 @@ EditorEnterBtn.onclick = (evt)=>{
         editor_mode = "editor";
         RemarkupElement.classList.add("editor-left-col");
         RemarkupElement.classList.add(editor_style.style_name);
-        RemarkupElement.parentNode.classList.add("background-force-while");
 
         // Make the editor bar available
         RemarkupElement.classList.remove("remarkup-preview-active");
@@ -393,7 +388,6 @@ EditorEnterBtn.onclick = (evt)=>{
 
         RemarkupElement.classList.remove("editor-left-col");
         RemarkupElement.classList.remove(editor_style.style_name);
-        RemarkupElement.parentNode.classList.remove("background-force-while");
 
         PreviewElement.classList.remove("editor-right-col");
         PreviewElement.classList.remove(editor_style.style_name);
