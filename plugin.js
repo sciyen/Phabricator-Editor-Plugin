@@ -65,6 +65,10 @@ var editor_styles = `
     bottom: 0;
 }
 
+a.phabricator-remarkup-embed-image img {
+  background-color: white;
+}
+
 .back-drop {
     position: absolute;
     z-index: 15;
