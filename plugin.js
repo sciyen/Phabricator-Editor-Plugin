@@ -123,22 +123,38 @@ marker.circle::after {
   content: "";
   position: absolute;
   margin-left: -1.5em;
-  width: 1em;
-  height: 1em;
+  width: 1.5em;
+  height: 1.5em;
   border-radius: 50%;
 }
 
-marker.bullet::after {
-  background: #ecaaef;
+marker.rect {
+  background-color: var(--lt-color-rect);
 }
 
-marker.number::after {
-  background: #aaecef;
+marker.dash::after {
+  content: "";
+  position: absolute;
+  margin-top: 0.5em;
+  margin-left: -1.5em;
+  width: 1em;
+  height: 0.5em;
+  border-radius: 20%;
+}
+
+marker.bullet::after {
+  background-color: var(--lt-color-bullet);
+}
+
+marker.number {
+  border-top-right-radius: 50%;
+  border-bottom-right-radius: 50%;
+  background-color: var(--lt-color-number);
 }
 
 marker.border {
   background-color: transparent;
-  box-shadow: #ee99aa 0px 0px 2px 2px;
+  box-shadow: var(--lt-color-border) 0px 0px 1px 1px;
 }
 `;
 
@@ -163,13 +179,17 @@ marker.border {
     const color_mode = isLight(getBackgroundColor()) ? "light" : "dark";
     var editor_root_styles = `
     :root {
-        --lt-color-background-darkmode: #2c405a;
+        --lt-color-background-darkmode: #1B2430;
         --lt-color-text-primary: var(${(color_mode === 'light') ? '--lt-color-text-dark' : '--lt-color-white'});
         --lt-color-background-primary: var(${(color_mode === 'light') ? '--lt-color-background-light' : '--lt-color-background-darkmode'});
-        --lt-color-heading-1: ${(color_mode === 'light') ? '#d4e9ab' : '#667744'};
-        --lt-color-heading-2: ${(color_mode === 'light') ? '#d4e9cd' : '#667755'};
-        --lt-color-heading-3: ${(color_mode === 'light') ? '#d4e9ef' : '#667766'};
-        --lt-color-heading-4: ${(color_mode === 'light') ? '#d4faef' : '#668866'};
+        --lt-color-heading-1: ${(color_mode === 'light') ? '#B5C0D0' : '#E2BBE9'};
+        --lt-color-heading-2: ${(color_mode === 'light') ? '#CCD3CA' : '#9B86BD'};
+        --lt-color-heading-3: ${(color_mode === 'light') ? '#F5E8DD' : '#7776B3'};
+        --lt-color-heading-4: ${(color_mode === 'light') ? '#EED3D9' : '#5A639C'};
+        --lt-color-bullet: ${(color_mode === 'light') ? '#B1AFFF' : '#50727B'};
+        --lt-color-number: ${(color_mode === 'light') ? '#BBE9FF' : '#78A083'};
+        --lt-color-border: ${(color_mode === 'light') ? '#1679AB' : '#B25068'};
+        --lt-color-rect: ${(color_mode === 'light') ? '#ecdff1' : '#622f78'};
     }
     `;
     var editor_root_style = document.createElement("style");
@@ -336,27 +356,27 @@ EditorEnterBtn.onclick = (evt)=>{
                 var highlightedText = ((text)=>{
                     return text
                         .replace(/\n$/g, '\n\n')
-                        .replace(/^#{1}.*$/gm, function (a, b) {
+                        .replace(/^#{1}(?!#).*$/gm, function (a, b) {
                             // Heading 1
                             return '<marker class="bold long-bar heading-1">' + a + '</marker>';
                         })
-                        .replace(/^#{2}.*$/gm, function (a, b) {
+                        .replace(/^#{2}(?!#).*$/gm, function (a, b) {
                             // Heading 2
                             return '<marker class="bold long-bar heading-2">' + a + '</marker>';
                         })
-                        .replace(/^#{3}.*$/gm, function (a, b) {
+                        .replace(/^#{3}(?!#).*$/gm, function (a, b) {
                             // Heading 3
                             return '<marker class="bold long-bar heading-3">' + a + '</marker>';
                         })
-                        .replace(/^#{4}.*$/gm, function (a, b) {
+                        .replace(/^#{4}(?!#).*$/gm, function (a, b) {
                             // Heading 4
                             return '<marker class="bold long-bar heading-4">' + a + '</marker>';
                         })
-                        .replace(/^={5}.*$/gm, function (a, b) {
+                        .replace(/^={5}(?!#).*$/gm, function (a, b) {
                             // Heading 4
                             return '<marker class="bold long-bar heading-3">' + a + '</marker>';
                         })
-                        .replace(/^={6}.*$/gm, function (a, b) {
+                        .replace(/^={6}(?!#).*$/gm, function (a, b) {
                             // Heading 4
                             return '<marker class="bold long-bar heading-4">' + a + '</marker>';
                         })
@@ -366,11 +386,11 @@ EditorEnterBtn.onclick = (evt)=>{
                         })
                         .replace(/^(\s*(\-|\+)\s)/gm, function (a, b) {
                             // Bullet
-                            return '<marker class="circle bullet">' + a + '</marker>';
+                            return '<marker class="dash bullet">' + a + '</marker>';
                         })
-                        .replace(/^(\d+\.\s)/gm, function (a, b) {
+                        .replace(/\W(\d+\.\s)/gm, function (a, b) {
                             // Number list
-                            return '<marker class="circle number">' + a + '</marker>';
+                            return '<marker class="number">' + a + '</marker>';
                         })
                         .replace(/\{.*?\}/g, function (a, b) {
                             // {}
@@ -379,6 +399,10 @@ EditorEnterBtn.onclick = (evt)=>{
                         .replace(/\[.*?\]/g, function (a, b) {
                             // []
                             return '<marker class="border parantheless">' + a + '</marker>';
+                        })
+                        .replace(/!!.*!!/gm, function (a, b) {
+                            // !! !! !!.*!!
+                            return '<marker class="rect">' + a + '</marker>';
                         })
                 })(text);
                 evt.target.parentElement.querySelector("#div-highlights").innerHTML = highlightedText;
