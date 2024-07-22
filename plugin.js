@@ -336,19 +336,27 @@ EditorEnterBtn.onclick = (evt)=>{
                 var highlightedText = ((text)=>{
                     return text
                         .replace(/\n$/g, '\n\n')
-                        .replace(/^#{1}\w.*\b/gm, function (a, b) {
+                        .replace(/^#{1}.*$/gm, function (a, b) {
                             // Heading 1
                             return '<marker class="bold long-bar heading-1">' + a + '</marker>';
                         })
-                        .replace(/^#{2}\w.*\b/gm, function (a, b) {
+                        .replace(/^#{2}.*$/gm, function (a, b) {
                             // Heading 2
                             return '<marker class="bold long-bar heading-2">' + a + '</marker>';
                         })
-                        .replace(/^#{3}\w.*\b/gm, function (a, b) {
+                        .replace(/^#{3}.*$/gm, function (a, b) {
                             // Heading 3
                             return '<marker class="bold long-bar heading-3">' + a + '</marker>';
                         })
-                        .replace(/^#{4}\w.*\b/gm, function (a, b) {
+                        .replace(/^#{4}.*$/gm, function (a, b) {
+                            // Heading 4
+                            return '<marker class="bold long-bar heading-4">' + a + '</marker>';
+                        })
+                        .replace(/^={5}.*$/gm, function (a, b) {
+                            // Heading 4
+                            return '<marker class="bold long-bar heading-3">' + a + '</marker>';
+                        })
+                        .replace(/^={6}.*$/gm, function (a, b) {
                             // Heading 4
                             return '<marker class="bold long-bar heading-4">' + a + '</marker>';
                         })
