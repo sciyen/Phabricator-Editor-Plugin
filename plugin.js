@@ -432,7 +432,7 @@ EditorEnterBtn.onclick = (evt)=>{
         editor_mode = "normal";
         var textarea = RemarkupElement.querySelector("textarea");
 
-        textarea.parentElement.classList.remove("force-textarea-background")
+        textarea.parentElement.classList.remove("force-textarea-background");
 
         RemarkupElement.classList.remove("editor-left-col");
         RemarkupElement.classList.remove(editor_style.style_name);
