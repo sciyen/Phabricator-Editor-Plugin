@@ -733,7 +733,39 @@ window.addEventListener("keydown", (event) => {
             }).join('\n');
             
             textarea.setRangeText(newText, start, end, 'select');
-            event.preventDefault(); 
+            event.preventDefault();
+        } else if (event.key == 'Enter') {
+            event.preventDefault();
+            // if selection is not empty, insert a new line and indent the selected text
+            var start = textarea.selectionStart;
+            // find the last line break before the start position
+            while (start > 0 && textarea.value[start - 1] != '\n') {
+                // (start-1) avoids additional space at the end of previous line
+                start--;
+            }
+
+            // Obtain the indention of the current line
+            var current_line = textarea.value.substring(start, textarea.selectionStart);
+            var indention = current_line.match(/^\s*[-+]*(\d+\.)*\s*/m);
+            
+            if (indention !== null) {
+                indention = indention[0];
+                // Increment the number in the indention if it is a number list
+                if (indention.match(/^\d+\./) !== null) {
+                    // Increment the number in the indention
+                    var num = parseInt(indention.match(/^\d+/)[0]) + 1;
+                    indention = indention.replace(/^\d+/, num);
+                }
+
+            } else {
+                indention = '';
+            }
+
+            // Insert the indention at current cursor position
+            const text = textarea.value;
+            const selectedText = text.substring(start, textarea.selectionEnd);
+            const newText = selectedText + '\n' + indention;
+            textarea.setRangeText(newText, start, textarea.selectionEnd, 'end');
         }
     }
 });
