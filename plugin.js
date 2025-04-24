@@ -25,6 +25,10 @@ var editor_styles = `
     background-color: transparent !important;
 }
 
+.force-textarea-background {
+    background-color: var(--lt-color-background-primary);
+}
+
 .editor-right-col {
     display: block;
     position: fixed;
@@ -184,6 +188,7 @@ marker.border {
     var editor_root_styles = `
     :root {
         --lt-color-background-darkmode: #1B2430;
+        --lt-color-background-light: #FEFEFE;
         --lt-color-text-primary: var(${(color_mode === 'light') ? '--lt-color-text-dark' : '--lt-color-white'});
         --lt-color-background-primary: var(${(color_mode === 'light') ? '--lt-color-background-light' : '--lt-color-background-darkmode'});
         --lt-color-heading-1: ${(color_mode === 'light') ? '#B5C0D0' : '#E2BBE9'};
@@ -418,9 +423,16 @@ EditorEnterBtn.onclick = (evt) => {
                 var scrollTop = evt.target.scrollTop;
                 evt.target.parentElement.getElementsByClassName("back-drop")[0].scrollTop = scrollTop;
             });
+        } else {
+            // If highlight container is not enabled, the background will be transparent,
+            // and thus, I insert the background-color to its parent.
+            textarea.parentElement.classList.add("force-textarea-background");
         }
     } else {
         editor_mode = "normal";
+        var textarea = RemarkupElement.querySelector("textarea");
+
+        textarea.parentElement.classList.remove("force-textarea-background");
 
         RemarkupElement.classList.remove("editor-left-col");
         RemarkupElement.classList.remove(editor_style.style_name);
