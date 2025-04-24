@@ -164,7 +164,7 @@ marker.border {
 
 
 // Set up primary colors
-(()=>{
+(() => {
     // check if the background color is light or dark
     function isLight(color) {
         const rgb = color.match(/\d+/g);
@@ -173,7 +173,7 @@ marker.border {
             (parseInt(rgb[2]) * 114)) / 1000);
         return brightness > 155;
     }
-    
+
     // get the color of the background
     function getBackgroundColor() {
         const style = getComputedStyle(document.body);
@@ -212,8 +212,8 @@ document.head.appendChild(styleSheet);
 function SetRemarkupPreview(preview_state) {
     // If there has multiple preview buttons, choose the last one
     const num_btn = document.querySelectorAll("div.fa-eye").length;
-    var PreviewBtn = document.querySelectorAll("div.fa-eye")[num_btn-1].parentElement;
-    if (PreviewBtn == null) 
+    var PreviewBtn = document.querySelectorAll("div.fa-eye")[num_btn - 1].parentElement;
+    if (PreviewBtn == null)
         return null;
     const current_state = PreviewBtn.classList.contains("preview-active");
     if (preview_state != current_state) {
@@ -252,7 +252,7 @@ function GetRemarkupElement() {
     var assist_bar = document.getElementsByClassName("remarkup-assist-bar");
     const edit_mode = (assist_bar.length > 1) ? EditorMode.BlockEditor : EditorMode.Normal;
 
-    var targetRemarkUpElement = assist_bar[assist_bar.length-1].parentElement;
+    var targetRemarkUpElement = assist_bar[assist_bar.length - 1].parentElement;
     targetRemarkUpElement.querySelector("textarea").focus();
 
     // I don't know why I can not insert text into the textarea (maybe the php 
@@ -291,7 +291,7 @@ function GetPreviewElement(edit_mode) {
         // before using it (otherwise it does not exist)
         if (document.getElementsByClassName("remarkup-inline-preview").length > 0)
             return document.getElementsByClassName("remarkup-inline-preview")[0];
-    } 
+    }
 
     return null;
 }
@@ -317,7 +317,7 @@ EditorEnterBtn.setAttribute("id", "editor-enter-btn");
 EditorEnterBtn.classList.add("editor-btn");
 EditorEnterBtn.innerHTML = `<p id="editor-text">Edit</p>`;
 
-EditorEnterBtn.onclick = (evt)=>{
+EditorEnterBtn.onclick = (evt) => {
     var [edit_mode, RemarkupElement] = GetRemarkupElement();
     var PreviewElement = GetPreviewElement(edit_mode);
 
@@ -348,7 +348,7 @@ EditorEnterBtn.onclick = (evt)=>{
         var highlight_container = textarea.parentElement.insertBefore(document.createElement("div"), textarea);
         highlight_container.classList.add("back-drop");
         highlight_container.setAttribute("id", "back-drop");
-        
+
         // check if PhabricatorMonospaced appears in the textarea's class
         var textarea_class = textarea.getAttribute("class");
         if (textarea_class.includes("PhabricatorMonospaced") === true) {
@@ -357,7 +357,7 @@ EditorEnterBtn.onclick = (evt)=>{
 
             textarea.addEventListener("input", (evt) => {
                 var text = evt.target.value;
-                var highlightedText = ((text)=>{
+                var highlightedText = ((text) => {
                     return text
                         .replace(/\n$/g, '\n\n')
                         .replace(/^#{1}(?!#).*$/gm, function (a, b) {
@@ -399,7 +399,7 @@ EditorEnterBtn.onclick = (evt)=>{
                         .replace(/\{.*?\}/g, function (a, b) {
                             // {}
                             return '<marker class="border parantheless">' + a + '</marker>';
-                        }) 
+                        })
                         .replace(/\[.*?\]/g, function (a, b) {
                             // []
                             return '<marker class="border parantheless">' + a + '</marker>';
@@ -448,7 +448,7 @@ EditorSizeBtn.setAttribute("id", "editor-size-btn");
 EditorSizeBtn.classList.add("editor-btn");
 EditorSizeBtn.innerHTML = `<p id="editor-size-text">Half<br>Size</p>`;
 
-EditorSizeBtn.onclick = (evt)=>{
+EditorSizeBtn.onclick = (evt) => {
     var [edit_mode, RemarkupElement] = GetRemarkupElement();
     var PreviewElement = GetPreviewElement(edit_mode);
 
@@ -605,7 +605,7 @@ document.body.appendChild(EditorSizeBtn);
     const findBtn = document.getElementById("find-btn");
     const replaceBtn = document.getElementById("replace-btn");
 
-    function getSearchRegex (findText) {
+    function getSearchRegex(findText) {
         // get search options from the switch input 
         const caseSensitive = document.getElementById("capital-switch").checked;
         const wholeWord = document.getElementById("whole-word-switch").checked;
@@ -638,7 +638,7 @@ document.body.appendChild(EditorSizeBtn);
                 } else {
                     const position = text_below_cursor.search(searchRegex) + current_selected_index;
                     textarea.setSelectionRange(position, position + findText.length);
-                    document.getElementById("span-num-text-found").innerText = `${num_text_found-num_text_found_here+1} / ${num_text_found}`;
+                    document.getElementById("span-num-text-found").innerText = `${num_text_found - num_text_found_here + 1} / ${num_text_found}`;
                 }
             } while (num_text_found_here === 0 && num_text_found > 0);
         } else {
@@ -685,44 +685,45 @@ const insertText = (textarea, token) => {
 };
 
 window.addEventListener("keydown", (event) => {
-    if (document.activeElement.type == 'textarea' ){
+    if (document.activeElement.type == 'textarea') {
         // insert text into textarea: 
         // https://phuoc.ng/collection/html-dom/insert-text-into-a-text-area-at-the-current-position/
         let textarea = document.activeElement;
-        if(event.ctrlKey && event.key === 'b') {
+        if (event.ctrlKey && event.key === 'b') {
             insertText(textarea, '**');
             // cancel selection and go to the last position of the inserted text
             textarea.setSelectionRange(textarea.selectionEnd - 2, textarea.selectionEnd - 2);
-            event.preventDefault(); 
-        } else if(event.ctrlKey && event.key == 'i') { 
+            event.preventDefault();
+        } else if (event.ctrlKey && event.key == 'i') {
             insertText(textarea, '//');
             // cancel selection and go to the last position of the inserted text
             textarea.setSelectionRange(textarea.selectionEnd - 2, textarea.selectionEnd - 2);
-            event.preventDefault(); 
-        } else if(event.ctrlKey && event.key == 'f') { 
+            event.preventDefault();
+        } else if (event.ctrlKey && event.key == 'f') {
             // textarea.value
         } else if (event.key == '`') {
             insertText(textarea, '`');
+            textarea.setSelectionRange(textarea.selectionEnd - 1, textarea.selectionEnd - 1);
             event.preventDefault();
-        } else if(event.key == 'Tab') { 
+        } else if (event.key == 'Tab') {
             // if selection is not empty, indent the selected text
             var start = textarea.selectionStart;
             // find the last line break before the start position
-            while (start > 0 && textarea.value[start-1] != '\n') {
+            while (start > 0 && textarea.value[start - 1] != '\n') {
                 // (start-1) avoids additional space at the end of previous line
                 start--;
             }
 
             // This avoids un-captured case when the cursor is at the beginning of the line
             var end = textarea.selectionEnd;
-            while (end < textarea.value.length && textarea.value[end+1] != '\n') {
+            while (end < textarea.value.length && textarea.value[end + 1] != '\n') {
                 end++;
             }
 
             const text = textarea.value;
             const selectedText = text.substring(start, end);
             const newText = selectedText.split('\n').map((line) => {
-                if (event.shiftKey) {                    
+                if (event.shiftKey) {
                     // if shift is pressed, unindent the selected text
                     // remove the two spaces at the beginning of the line
                     return line.replace(/^  /, '');
@@ -731,7 +732,7 @@ window.addEventListener("keydown", (event) => {
                     return '  ' + line;
                 }
             }).join('\n');
-            
+
             textarea.setRangeText(newText, start, end, 'select');
             event.preventDefault();
         } else if (event.key == 'Enter') {
@@ -747,7 +748,7 @@ window.addEventListener("keydown", (event) => {
             // Obtain the indention of the current line
             var current_line = textarea.value.substring(start, textarea.selectionStart);
             var indention = current_line.match(/^\s*[-+]*(\d+\.)*\s*/m);
-            
+
             if (indention !== null) {
                 indention = indention[0];
                 // Increment the number in the indention if it is a number list
@@ -761,17 +762,27 @@ window.addEventListener("keydown", (event) => {
                 indention = '';
             }
 
+            // Check if current textarea is a child of a td element
+            // if so, insert {newline} followed by '\n'
+            var parent_td = textarea.closest("td");
+            var linebreak = '';
+            if (parent_td !== null) {
+                linebreak = '{newline} \n';
+            } else {
+                linebreak = '\n';
+            }
+
             // Insert the indention at current cursor position
             const text = textarea.value;
             const selectedText = text.substring(start, textarea.selectionEnd);
-            const newText = selectedText + '\n' + indention;
+            const newText = selectedText + linebreak + indention;
             textarea.setRangeText(newText, start, textarea.selectionEnd, 'end');
         }
     }
 });
 
 // Insert block id to all the timeline extra element
-(()=>{
+(() => {
     // Insert css for the block id
     const blockIdStyles = `
     .phui-timeline-extra .block-id {
@@ -789,7 +800,7 @@ window.addEventListener("keydown", (event) => {
         color: white;
     }
     `;
-    
+
     // Retrieve task id
     const task_id = (() => {
         const crumb_node = document.getElementsByClassName("phabricator-last-crumb")[0];
@@ -816,11 +827,11 @@ window.addEventListener("keydown", (event) => {
     var timeline_extra = document.querySelectorAll('.phui-timeline-extra');
     for (var i = 0; i < timeline_extra.length; i++) {
         var stamp_element = timeline_extra[i].querySelector('a');
-        
+
         if (stamp_element !== null) {
             // get href
             var href = task_id + stamp_element.getAttribute('href');
-            
+
             // insert a span element to show the href
             var span = document.createElement('span');
             span.classList.add('block-id');
@@ -843,6 +854,278 @@ window.addEventListener("keydown", (event) => {
             timeline_extra[i].appendChild(span);
         }
     };
-})()
+})();
+
+// Table Editor
+
+var tableEditor_styles = `
+#table-editor-btn {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    padding: 3px 5px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background: rgba(41,128,185,0.8);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    color: white;
+}
+
+#table-editor-div {
+    position: fixed;
+    z-index: 1001;
+    background: white;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    width: 80%;
+    max-width: 80%;
+    max-height: 80%;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    overflow: auto;
+}
+
+#table-editor-div tr td {
+    position: relative;
+    overflow: hidden;
+    width: auto;
+    min-width: 150px;
+    padding: 0;
+    border: 1px solid #ccc;
+    vertical-align: top;
+}
+
+#table-editor-div tr td textarea{
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 4px;
+    border: none;
+    outline: none;
+    overflow: none;
+    resize: both;
+    overflow-wrap: break-word;
+}
+
+#table-editor-div button {
+    margin: 5px;
+    padding: 5px 10px;
+}
+`;
+
+// Inserting the styles to the head
+var styleSheet = document.createElement("style");
+styleSheet.innerText = tableEditor_styles;
+document.head.appendChild(styleSheet);
+
+(() => {
+    const tableRowRegex = /^\s*\|(?:[^|]+\|)+\s*$/;
+    let tableEditor = null;
+    let originalRange = null;
+    let textaera_element = null;
+
+    function isTableFormat(text) {
+        const lines = text.trim().split('\n');
+        return lines.length > 0 && lines.every(line => tableRowRegex.test(line));
+    }
+
+    window.addEventListener("mouseup", (event) => {
+        if (document.activeElement.type == 'textarea') {
+            setTimeout(() => {
+                const selection = window.getSelection();
+                const text = selection.toString();
+
+                if (selection.rangeCount > 0 && isTableFormat(text)) {
+                    textaera_element = document.activeElement;
+                    originalRange = {
+                        selectionStart: textaera_element.selectionStart,
+                        selectionEnd: textaera_element.selectionEnd,
+                    };
+                    showFloatingButton(event.clientX, event.clientY);
+                } else {
+                    hideFloatingButton();
+                }
+            }, 10);
+        }
+    });
+
+    const tableEditorBtn = document.createElement('button');
+    tableEditorBtn.setAttribute("id", "table-editor-btn");
+    tableEditorBtn.textContent = 'Table Editor';
+    document.body.appendChild(tableEditorBtn);
+
+    function showFloatingButton(x, y) {
+        tableEditorBtn.style.left = `${x}px`;
+        tableEditorBtn.style.top = `${y}px`;
+        tableEditorBtn.style.display = 'block';
+    }
+
+    function hideFloatingButton() {
+        tableEditorBtn.style.display = 'none';
+    }
+
+    tableEditorBtn.addEventListener('click', () => {
+        const selection = window.getSelection();
+        const text = selection.toString();
+        if (!isTableFormat(text)) return;
+
+        showTableEditor(parseTable(text));
+        hideFloatingButton();
+    });
+
+    function parseTable(text) {
+        return text.trim().split('\n').map(row =>
+            row.trim().split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
+        );
+    }
+
+    function replaceSelectionWithText(text) {
+        const textarea = textaera_element;
+        const start = originalRange.selectionStart;
+        const end = originalRange.selectionEnd;
+
+        // Remove every '\n' that is not followed by '|'
+        text = text.replace(/(\n)(?=[^|])/g, '');
+
+        textarea.setRangeText(text, start, end, 'select');
+    }
+
+    function showTableEditor(tableData) {
+        if (tableEditor) tableEditor.remove();
+
+        tableEditor = document.createElement('div');
+        tableEditor.setAttribute("id", "table-editor-div");
+
+        const table = document.createElement('table');
+        table.style.borderCollapse = 'collapse';
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                const el = entry.target;
+                const newWidth = el.offsetWidth;
+                const newHeight = el.offsetHeight;
+                const r = el.dataset.row;
+                const c = el.dataset.col;
+
+                // Sync column width
+                [...table.rows].forEach(row => {
+                    const cell = row.cells[c];
+                    if (cell) {
+                        const ta = cell.querySelector('textarea');
+                        if (ta !== el) ta.style.width = `${newWidth}px`;
+                    }
+                });
+
+                // Sync row height
+                const currentRow = table.rows[r];
+                [...currentRow.cells].forEach(cell => {
+                    const ta = cell.querySelector('textarea');
+                    if (ta !== el) ta.style.height = `${newHeight}px`;
+                });
+            }
+        });
+
+        function createNewCell(text, rowIdx, colIdx) {
+            const td = document.createElement('td');
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+
+            textarea.dataset.row = rowIdx;
+            textarea.dataset.col = colIdx;
+
+            resizeObserver.observe(textarea);
+
+
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = `${textarea.scrollHeight}px`;
+            });
+
+            td.appendChild(textarea);
+            return td;
+        }
+
+        tableData.forEach((rowData, rowIdx) => {
+            const tr = document.createElement('tr');
+            rowData.forEach((cellData, colIdx) => {
+
+                // Add a '\n' after all '{newline}'
+                text = cellData.replace(/\{newline\}/g, '\{newline\}\n');
+                td = createNewCell(text, rowIdx, colIdx);
+                tr.appendChild(td);
+            });
+            table.appendChild(tr);
+        });
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save';
+        saveBtn.style.marginRight = '10px';
+
+        const discardBtn = document.createElement('button');
+        discardBtn.textContent = 'Discard';
+
+        const addRowBtn = document.createElement('button');
+        addRowBtn.textContent = 'Insert Row';
+
+        const addColBtn = document.createElement('button');
+        addColBtn.textContent = 'Insert Column';
+
+        const buttonRow = document.createElement('div');
+        buttonRow.style.marginTop = '10px';
+        buttonRow.appendChild(saveBtn);
+        buttonRow.appendChild(discardBtn);
+        buttonRow.appendChild(addRowBtn);
+        buttonRow.appendChild(addColBtn);
+
+        tableEditor.appendChild(table);
+        tableEditor.appendChild(buttonRow);
+        document.body.appendChild(tableEditor);
+
+        // Save click
+        saveBtn.addEventListener('click', () => {
+            const newData = [...table.rows].map(tr =>
+                [...tr.cells].map(td => td.firstChild.value.trim())
+            );
+            const newTableText = newData.map(row => '| ' + row.join(' | ') + ' |').join('\n');
+            replaceSelectionWithText(newTableText);
+            tableEditor.remove();
+            tableEditor = null;
+        });
+
+        // Discard click
+        discardBtn.addEventListener('click', () => {
+            tableEditor.remove();
+            tableEditor = null;
+        });
+
+        addRowBtn.addEventListener('click', () => {
+            const colCount = table.rows[0]?.cells.length || 0;
+            const tr = document.createElement('tr');
+            const rowIdx = table.rows.length;
+
+            for (let colIdx = 0; colIdx < colCount; colIdx++) {
+                td = createNewCell('', rowIdx, colIdx);
+                tr.appendChild(td);
+            }
+
+            table.appendChild(tr);
+        });
+
+        addColBtn.addEventListener('click', () => {
+            const rowCount = table.rows.length;
+
+            for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+                const row = table.rows[rowIdx];
+                const colIdx = row.cells.length;
+
+                td = createNewCell('', rowIdx, colIdx);
+                row.appendChild(td);
+            }
+        });
+    }
+})();
 
 EditorEnterBtn.click();
