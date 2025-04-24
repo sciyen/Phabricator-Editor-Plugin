@@ -844,3 +844,5 @@ window.addEventListener("keydown", (event) => {
         }
     };
 })()
+
+EditorEnterBtn.click();
