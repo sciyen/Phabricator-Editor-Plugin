@@ -71,6 +71,11 @@ javascript: (() => {
     top: 50px;
 }
 
+#clone-btn {
+    right: 190px;
+    top: 50px;
+}
+
 .editor-move-down {
     position: fixed;
     bottom: 0;
@@ -1148,6 +1153,50 @@ padding: 5px 10px;
                 }
             });
         }
+    })();
+
+    // Detect if it is an event or a task. If true, show a clone button
+    (() => {
+        const form_obj = document.getElementById("phabricator-standard-page-body");
+        const action = form_obj.getElementsByTagName("form")[0].action;
+        const eventEditRegex = /\/calendar\/event\/edit\/(\d+)/;
+        const taskEditRegex = /\/maniphest\/task\/edit\/(\d+)/;
+
+        const cloneBtn = document.createElement("button");
+        cloneBtn.setAttribute("id", "clone-btn");
+        cloneBtn.classList.add("editor-btn");
+        cloneBtn.innerHTML = `<p id="clone-text">Clone</p>`;
+
+        function handleCloneBtnClick(action_url) {
+            cloneBtn.addEventListener("click", (evt) => {
+                alert("Clone button clicked!");
+                btn_objs = form_obj.getElementsByTagName("button");
+                for (let i = 0; i < btn_objs.length; i++) {
+                    if (btn_objs[i].name == "__submit__") {
+                        btn_objs[i].textContent = "Make Clone";
+                        form_obj.getElementsByTagName("form")[0].action = action_url;
+                        console.log("action replaced");
+                    }
+                }
+            })
+        }
+
+        if (action.match(eventEditRegex) !== null) {
+            // This is an event edit page
+            const event_id = action.match(eventEditRegex)[1];
+            cloneBtn.innerHTML = `<p id="clone-text">Clone<br>E${event_id}</p>`;
+            handleCloneBtnClick(`/calendar/event/edit/form/3/`);
+        } else if (action.match(taskEditRegex) !== null) {
+            // This is a task edit page
+            const task_id = action.match(taskEditRegex)[1];
+            cloneBtn.innerHTML = `<p id="clone-text">Clone<br>T${task_id}</p>`;
+            handleCloneBtnClick(`/maniphest/task/edit/form/2/`);
+        } else {
+            // This is not an event or task edit page
+            cloneBtn.style.display = "none";
+        }
+
+        document.body.appendChild(cloneBtn);
     })();
 
     EditorEnterBtn.click();
