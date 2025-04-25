@@ -23,6 +23,7 @@ var editor_styles = `
     height: 100% !important;
     z-index: 14;
     background-color: transparent !important;
+    padding-bottom: 80px;
 }
 
 .force-textarea-background {
@@ -83,6 +84,7 @@ a.phabricator-remarkup-embed-image img {
     box-sizing: border-box;
     border: 1px solid #A1A6B0;
     background-color: var(--lt-color-background-primary);
+    padding-bottom: 80px;
 }
 
 .highlights {
@@ -526,8 +528,8 @@ document.body.appendChild(EditorSizeBtn);
         z-index: 100;
         bottom: 0;
         left: 0;
-        padding: 5px;
-        background-color: rgba(250,250,250,0.2);
+        padding: 1px;
+        background-color: var(--lt-color-background-primary);
         border: 1px solid #ccc;
         border-radius: 5px;
     }
@@ -542,12 +544,11 @@ document.body.appendChild(EditorSizeBtn);
         padding-right: 10px;
     }
     .find-input, .replace-input {
-        padding: 2px;
-        margin: 2px;
+        padding: 1px !important;
+        height: 20px !important;
     }
     .find-btn, .replace-btn {
-        padding: 2px;
-        margin: 2px;
+        padding: 1px;
     }
 
     .switch {
