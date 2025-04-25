@@ -991,7 +991,7 @@ document.head.appendChild(styleSheet);
 
     function parseTable(text) {
         return text.trim().split('\n').map(row =>
-            row.trim().split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim())
+            row.trim().split('|').filter(cell => cell !== '').map(cell => cell.trim())
         );
     }
 
