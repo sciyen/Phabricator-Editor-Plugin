@@ -765,10 +765,10 @@ window.addEventListener("keydown", (event) => {
             if (indention !== null) {
                 indention = indention[0];
                 // Increment the number in the indention if it is a number list
-                if (indention.match(/^\d+\./) !== null) {
+                if (indention.match(/\d+\./) !== null) {
                     // Increment the number in the indention
-                    var num = parseInt(indention.match(/^\d+/)[0]) + 1;
-                    indention = indention.replace(/^\d+/, num);
+                    var num = parseInt(indention.match(/\d+/)[0]) + 1;
+                    indention = indention.replace(/\d+/, num);
                 }
 
             } else {
