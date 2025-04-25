@@ -10,7 +10,7 @@ var editor_styles = `
 .editor-left-col {
     display: block;
     position: fixed;
-    z-index: 15;
+    z-index: 14;
     left: 0;
     bottom: 0;
     width: 50%;
@@ -21,7 +21,7 @@ var editor_styles = `
     position: absolute;
     display: block !important;
     height: 100% !important;
-    z-index: 16;
+    z-index: 14;
     background-color: transparent !important;
 }
 
@@ -32,7 +32,7 @@ var editor_styles = `
 .editor-right-col {
     display: block;
     position: fixed;
-    z-index: 15;
+    z-index: 14;
     left: 50%;
     bottom: 0;
     width: 50%;
@@ -75,7 +75,7 @@ a.phabricator-remarkup-embed-image img {
 
 .back-drop {
     position: absolute;
-    z-index: 15;
+    z-index: 13;
     overflow: auto;
     width: 100%;
     height: 100%;
