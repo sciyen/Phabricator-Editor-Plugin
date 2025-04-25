@@ -690,10 +690,9 @@ document.body.appendChild(EditorSizeBtn);
  */
 const insertText = (textarea, token) => {
     const position = textarea.selectionStart;
-    // const end = position + text.length;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = token + window.getSelection().toString() + token;
+    const text = token + textarea.value.substring(start, end) + token;
     textarea.setRangeText(text, start, end, 'select');
 };
 
@@ -948,14 +947,19 @@ document.head.appendChild(styleSheet);
     window.addEventListener("mouseup", (event) => {
         if (document.activeElement.type == 'textarea') {
             setTimeout(() => {
-                const selection = window.getSelection();
-                const text = selection.toString();
+                // Use selectionStart and selectionEnd to retrieve the selected text instead 
+                // since window.getSelection() does not work in firefox
+                const textarea = document.activeElement;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value.substring(start, end);
 
-                if (selection.rangeCount > 0 && isTableFormat(text)) {
-                    textaera_element = document.activeElement;
+                if (isTableFormat(text)) {
+                    textaera_element = textarea;
                     originalRange = {
-                        selectionStart: textaera_element.selectionStart,
-                        selectionEnd: textaera_element.selectionEnd,
+                        selectionStart: start,
+                        selectionEnd: end,
+                        originalText: text,
                     };
                     showFloatingButton(event.clientX, event.clientY);
                 } else {
@@ -981,8 +985,7 @@ document.head.appendChild(styleSheet);
     }
 
     tableEditorBtn.addEventListener('click', () => {
-        const selection = window.getSelection();
-        const text = selection.toString();
+        const text = originalRange.originalText;
         if (!isTableFormat(text)) return;
 
         showTableEditor(parseTable(text));
