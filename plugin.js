@@ -800,6 +800,7 @@ input:checked + .slider:before {
                 const selectedText = text.substring(start, textarea.selectionEnd);
                 const newText = selectedText + linebreak + indention;
                 textarea.setRangeText(newText, start, textarea.selectionEnd, 'end');
+                textarea.dispatchEvent(new Event('input'));
             }
         }
     });
@@ -926,6 +927,7 @@ width: 100%;
 height: 100%;
 box-sizing: border-box;
 padding: 4px;
+padding-buttom: 20px;
 border: none;
 outline: none;
 overflow: none;
@@ -1067,8 +1069,10 @@ padding: 5px 10px;
 
 
                 textarea.addEventListener('input', () => {
-                    textarea.style.height = 'auto';
-                    textarea.style.height = `${textarea.scrollHeight}px`;
+                    if (textarea.scrollHeight > textarea.clientHeight) {
+                        textarea.style.height = 'auto';
+                        textarea.style.height = `${textarea.scrollHeight + 20}px`;
+                    }
                 });
 
                 td.appendChild(textarea);
