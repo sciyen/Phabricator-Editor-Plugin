@@ -739,7 +739,9 @@ input:checked + .slider:before {
 
                 // This avoids un-captured case when the cursor is at the beginning of the line
                 var end = textarea.selectionEnd;
-                while (end < textarea.value.length && textarea.value[end + 1] != '\n') {
+                while (end < textarea.value.length
+                    && textarea.value[end] != '\n'
+                    && textarea.value[end + 1] != '\n') {
                     end++;
                 }
 
