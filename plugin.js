@@ -466,6 +466,56 @@ marker.border {
             var highlight_container = RemarkupElement.querySelector("#back-drop");
             RemarkupElement.removeChild(highlight_container);
         }
+
+        /* Paste Handler */
+
+        const parseHTMLTable = (html) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const table = doc.querySelector('table');
+            if (!table) return [];
+
+            return Array.from(table.rows).map(row =>
+                Array.from(row.cells).map(cell => cell.textContent?.trim() || '')
+            );
+        };
+
+        const convertArrayToTable = (array) => {
+            let str = "";
+            array.forEach(row => {
+                str += "\n| ";
+                row.forEach(cell => {
+                    // replace all line break to {newline}
+                    const cc = cell.replace('\n', "");
+                    str += " " + cc + " |";
+                });
+            });
+            return str;
+        };
+
+        const handlePaste = (e) => {
+            const clipboard = e.clipboardData;
+            const html = clipboard.getData('text/html');
+            const text = clipboard.getData('text/plain');
+
+            let parsed = [];
+
+            if (html) {
+                // console.log('Parsing HTML table', html);
+                parsed = parseHTMLTable(html);
+                table = convertArrayToTable(parsed);
+
+                // insert to textarea element to current position
+                var textarea = RemarkupElement.querySelector("textarea");
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                textarea.setRangeText(table, start, end, 'select');
+
+                e.preventDefault();
+            }
+        };
+
+        textarea.addEventListener('paste', handlePaste);
     };
 
     var EditorSizeBtn = document.createElement("button");
