@@ -473,7 +473,7 @@ marker.border {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const table = doc.querySelector('table');
-            if (!table) return [];
+            if (!table) return null;
 
             return Array.from(table.rows).map(row =>
                 Array.from(row.cells).map(cell => cell.textContent?.trim() || '')
@@ -503,15 +503,18 @@ marker.border {
             if (html) {
                 // console.log('Parsing HTML table', html);
                 parsed = parseHTMLTable(html);
-                table = convertArrayToTable(parsed);
 
-                // insert to textarea element to current position
-                var textarea = RemarkupElement.querySelector("textarea");
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                textarea.setRangeText(table, start, end, 'select');
+                if (parsed !== null) {
+                    table = convertArrayToTable(parsed);
 
-                e.preventDefault();
+                    // insert to textarea element to current position
+                    var textarea = RemarkupElement.querySelector("textarea");
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.setRangeText(table, start, end, 'select');
+
+                    e.preventDefault();
+                }
             }
         };
 
