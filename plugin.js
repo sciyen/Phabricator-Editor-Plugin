@@ -750,10 +750,14 @@ input:checked + .slider:before {
         * Hot key for the editor
         */
     const insertText = (textarea, token) => {
+        insertToken(textarea, token, token);
+    };
+
+    const insertToken = (textarea, token1, token2) => {
         const position = textarea.selectionStart;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const text = token + textarea.value.substring(start, end) + token;
+        const text = token1 + textarea.value.substring(start, end) + token2;
         textarea.setRangeText(text, start, end, 'select');
     };
 
@@ -774,8 +778,20 @@ input:checked + .slider:before {
                 event.preventDefault();
             } else if (event.ctrlKey && event.key == 'f') {
                 // textarea.value
-            } else if (event.key == '`') {
-                insertText(textarea, '`');
+            } else if (event.key == '`' || event.key == '"' || event.key == "'") {
+                insertText(textarea, event.key);
+                textarea.setSelectionRange(textarea.selectionEnd - 1, textarea.selectionEnd - 1);
+                event.preventDefault();
+            } else if (event.key == '(') {
+                insertToken(textarea, '(', ')');
+                textarea.setSelectionRange(textarea.selectionEnd - 1, textarea.selectionEnd - 1);
+                event.preventDefault();
+            } else if (event.key == '[') {
+                insertToken(textarea, '[', ']');
+                textarea.setSelectionRange(textarea.selectionEnd - 1, textarea.selectionEnd - 1);
+                event.preventDefault();
+            } else if (event.key == '{') {
+                insertToken(textarea, '{', '}');
                 textarea.setSelectionRange(textarea.selectionEnd - 1, textarea.selectionEnd - 1);
                 event.preventDefault();
             } else if (event.key == 'Tab') {
