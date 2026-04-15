@@ -498,6 +498,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
     render(); document.body.appendChild(ov);
   }
   var _mergeBusy = false;
+
   async function doAutoMerge() {
     if (_mergeBusy) return;
     _mergeBusy = true;
@@ -517,6 +518,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       var doc2 = new DOMParser().parseFromString(html, 'text/html');
       var stA = doc2.querySelector('textarea[name="text"]') || doc2.querySelector('textarea');
       var THEIRS = stA ? stA.value : '';
+
       /* Safety: if remote textarea not found or THEIRS is empty but we had content,
          fall back to direct submit to prevent data loss. */
       if (!THEIRS && $.mergeBase) { form.submit(); return; }
@@ -565,8 +567,10 @@ a.phabricator-remarkup-embed-image img{background:white;}
     _pvLastText = text;
 
     /* Toggle the preview button within the same remarkup container
-       to trigger Phabricator's native preview refresh mechanism. */
-    var pvBtn = findPreviewBtnInContainer();
+       to trigger Phabricator's native preview refresh mechanism.
+       Only needed when editing an existing comment (isMulti);
+       for task editing and new comments the preview updates via native events. */
+    var pvBtn = $.isMulti ? findPreviewBtnInContainer() : null;
     if (pvBtn) {
       if (pvBtn.classList.contains('preview-active')) {
         pvBtn.click(); pvBtn.click();
@@ -586,16 +590,19 @@ a.phabricator-remarkup-embed-image img{background:white;}
       /* Re-capture the preview element after Phabricator updates it */
       var newPv = $.remarkEl.closest('form') ?
           $.remarkEl.closest('form').querySelector('.remarkup-inline-preview') : null;
-        if (newPv && newPv !== $.previewEl) {
+      if (newPv) {
+        if (newPv !== $.previewEl) {
+          /* Preview element changed — clean up old one and rebind observer */
+          if ($.previewEl) $.previewEl.removeAttribute('style');
           $.previewEl = newPv;
-          applyRight($.previewEl);
-          /* Rebind minimap observer + rebuild for the new preview DOM */
           if (_mmMO) { _mmMO.disconnect(); }
           _mmMO = new MutationObserver(function () { schedRebuild(250); });
           _mmMO.observe($.previewEl, { childList: true, subtree: true });
           schedRebuild(300);
         }
-      ta.style.display = '';
+        /* Always re-apply right-panel layout — Phabricator's toggle resets styles */
+        applyRight($.previewEl);
+      }
       ta.focus();
       return;
     }
@@ -717,6 +724,8 @@ a.phabricator-remarkup-embed-image img{background:white;}
       stopMinimap();
       if ($.remarkEl) {
         $.remarkEl.removeAttribute('style');
+        var bar = $.remarkEl.querySelector('.remarkup-assist-bar');
+        if (bar) bar.removeAttribute('style');
         var ta = $.remarkEl.querySelector('textarea');
         if (ta) { var node = ta.parentElement; while (node && node !== $.remarkEl) { node.removeAttribute('style'); node = node.parentElement; } ta.removeAttribute('style'); }
       }
@@ -857,5 +866,12 @@ a.phabricator-remarkup-embed-image img{background:white;}
   $.mergeBase = getTA() ? getTA().value : '';
   attachAutoMerge();
   startMinimap();
+
+  /* Auto-enter edit mode on any edit page,
+     or when an inline comment editor dialog is open */
+  if (/\/edit\//.test(PAGE) ||
+      document.querySelector('.jx-client-dialog .remarkup-assist-bar')) {
+    document.getElementById('_PHE_EDIT').click();
+  }
 
 })();
