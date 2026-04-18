@@ -666,23 +666,72 @@ a.phabricator-remarkup-embed-image img{background:white;}
     if ($.active) { if ($.remarkEl) applyLeft($.remarkEl); if ($.previewEl) applyRight($.previewEl); applyDivider(); positionMinimap(); }
   });
 
+  /* Helper: Parse CSS line-height value */
+  function parseLineHeight(lhValue, fontSize) {
+    if (!lhValue || lhValue === 'normal') return null;
+    // If it's a pixel value, parse it
+    if (lhValue.endsWith('px')) return parseFloat(lhValue);
+    // If it's a numeric multiplier
+    var num = parseFloat(lhValue);
+    if (!isNaN(num) && lhValue === String(num)) {
+      return num * parseFloat(fontSize);
+    }
+    return null;
+  }
+
+  /* Helper: Measure actual line-height by creating a probe element */
+  function measureLineHeight(textarea) {
+    var cs = getComputedStyle(textarea);
+
+    // First try parsing the computed line-height
+    var parsedLH = parseLineHeight(cs.lineHeight, cs.fontSize);
+    if (parsedLH) return parsedLH;
+
+    // If line-height is 'normal', measure it with a probe element
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;top:-9999px;left:-9999px;';
+    probe.style.fontFamily = cs.fontFamily;
+    probe.style.fontSize = cs.fontSize;
+    probe.style.fontWeight = cs.fontWeight;
+    probe.style.letterSpacing = cs.letterSpacing;
+    probe.style.lineHeight = cs.lineHeight;
+    probe.textContent = 'M'; // Single line of text
+
+    document.body.appendChild(probe);
+    var height = probe.offsetHeight;
+    document.body.removeChild(probe);
+
+    return height;
+  }
+
+  /* Helper: Get scrollbar width */
+  function getScrollbarWidth(textarea) {
+    return textarea.offsetWidth - textarea.clientWidth;
+  }
+
   function syncBackdropStyles(ta, el, bar) {
     var cs = getComputedStyle(ta);
     var bar_cs = getComputedStyle(bar);
     el.style.fontFamily    = cs.fontFamily;
     el.style.fontSize      = cs.fontSize;
     el.style.fontWeight    = cs.fontWeight;
-    var lh = cs.lineHeight;
-    el.style.lineHeight    = (lh === 'normal')
-      ? (parseFloat(cs.fontSize) * 1.4) + 'px' // 1.4 is the browser default for 'normal'
-      : lh;
+
+    // Use measured line-height instead of hardcoded fallback
+    var lh = measureLineHeight(ta);
+    el.style.lineHeight    = lh + 'px';
+
     el.style.letterSpacing = cs.letterSpacing;
     el.style.wordSpacing   = cs.wordSpacing;
     el.style.textIndent    = cs.textIndent;
     el.style.paddingTop    = cs.paddingTop;
-    el.style.paddingRight  = cs.paddingRight;
     el.style.paddingBottom = cs.paddingBottom;
     el.style.paddingLeft   = cs.paddingLeft;
+
+    // Adjust for scrollbar width
+    var scrollbarWidth = getScrollbarWidth(ta);
+    var basePaddingRight = parseFloat(cs.paddingRight) || 0;
+    el.style.paddingRight  = (basePaddingRight + scrollbarWidth) + 'px';
+
     el.style.borderTopWidth    = cs.borderTopWidth;
     el.style.borderRightWidth  = cs.borderRightWidth;
     el.style.borderBottomWidth = cs.borderBottomWidth;
@@ -733,6 +782,11 @@ a.phabricator-remarkup-embed-image img{background:white;}
           ta.addEventListener('input', function () { var h = document.getElementById('_PHE_HL'); if (h) h.innerHTML = hlText(ta.value); });
           ta.dispatchEvent(new Event('input'));
           ta.addEventListener('scroll', function () { if ($.backdrop) $.backdrop.scrollTop = ta.scrollTop; });
+
+          // Keep backdrop styles in sync on input and window resize
+          var syncStyles = function () { syncBackdropStyles(ta, $.backdrop, bars[0]); };
+          ta.addEventListener('input', syncStyles);
+          window.addEventListener('resize', syncStyles);
         }
         ta.addEventListener('input', schedulePreviewRefresh);
         ta.addEventListener('input', updateSaveBtn);
