@@ -23,8 +23,7 @@ with open('plugin.js', 'r') as file:
 
         # write the content to the new file
         new_file.write(content)
-    
+
 # close the file
 file.close()
 new_file.close()
-
