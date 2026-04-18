@@ -666,8 +666,9 @@ a.phabricator-remarkup-embed-image img{background:white;}
     if ($.active) { if ($.remarkEl) applyLeft($.remarkEl); if ($.previewEl) applyRight($.previewEl); applyDivider(); positionMinimap(); }
   });
 
-  function syncBackdropStyles(ta, el) {
+  function syncBackdropStyles(ta, el, bar) {
     var cs = getComputedStyle(ta);
+    var bar_cs = getComputedStyle(bar);
     el.style.fontFamily    = cs.fontFamily;
     el.style.fontSize      = cs.fontSize;
     el.style.fontWeight    = cs.fontWeight;
@@ -686,6 +687,8 @@ a.phabricator-remarkup-embed-image img{background:white;}
     el.style.borderRightWidth  = cs.borderRightWidth;
     el.style.borderBottomWidth = cs.borderBottomWidth;
     el.style.borderLeftWidth   = cs.borderLeftWidth;
+
+    el.style.marginTop = bar_cs.height;
     try { el.style.tabSize = cs.tabSize; } catch (_) {}
   }
 
@@ -726,7 +729,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
           $.backdrop.className = 'phe-bd';
           $.backdrop.innerHTML = '<div id="_PHE_HL"></div>';
           ta.parentElement.insertBefore($.backdrop, ta);
-          syncBackdropStyles(ta, $.backdrop);
+          syncBackdropStyles(ta, $.backdrop, bars[0]);
           ta.addEventListener('input', function () { var h = document.getElementById('_PHE_HL'); if (h) h.innerHTML = hlText(ta.value); });
           ta.dispatchEvent(new Event('input'));
           ta.addEventListener('scroll', function () { if ($.backdrop) $.backdrop.scrollTop = ta.scrollTop; });
