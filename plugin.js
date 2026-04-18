@@ -149,14 +149,14 @@ a.phabricator-remarkup-embed-image img{background:white;}
       var c2 = document.querySelector('.phui-remarkup-preview');
       if (c2) return c2;
     }
-    var btns = document.querySelectorAll('div.fa-eye'); if (!btns.length) return null;
-    var btn = btns[btns.length - 1].parentElement;
+    var btns = document.querySelectorAll('.fa-eye'); if (!btns.length) return null;
+    var btn = btns[btns.length - 1].closest('button,a') || btns[btns.length - 1].parentElement;
     if (!btn.classList.contains('preview-active')) btn.click();
     return document.querySelector('.remarkup-inline-preview') || null;
   }
   function setPreview(on) {
-    var btns = document.querySelectorAll('div.fa-eye'); if (!btns.length) return;
-    var btn = btns[btns.length - 1].parentElement;
+    var btns = document.querySelectorAll('.fa-eye'); if (!btns.length) return;
+    var btn = btns[btns.length - 1].closest('button,a') || btns[btns.length - 1].parentElement;
     if (on !== btn.classList.contains('preview-active')) btn.click();
   }
   function hideDialog(hide) {
@@ -554,8 +554,8 @@ a.phabricator-remarkup-embed-image img{background:white;}
   function findPreviewBtnInContainer() {
     /* Find the preview toggle button inside the active editor container */
     if (!$.remarkEl) return null;
-    var btn = $.remarkEl.querySelector('div.fa-eye');
-    return btn ? btn.parentElement : null;
+    var icon = $.remarkEl.querySelector('.fa-eye');
+    return icon ? (icon.closest('button,a') || icon.parentElement) : null;
   }
 
   function doPreviewRefresh() {
