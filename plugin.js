@@ -186,7 +186,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
     Object.assign(ta.style, {
       flex: '1', minHeight: '0', width: '100%', boxSizing: 'border-box',
       resize: 'none', border: 'none', outline: 'none', padding: '18px 20px', background: 'transparent',
-      position: 'relative', zIndex: '2', fontSize: '14px', lineHeight: '1.75', overflowY: 'auto', display: 'block'
+      position: 'relative', zIndex: '2', overflowY: 'auto', display: 'block'
     });
   }
   function applyRight(preview) {
