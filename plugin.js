@@ -1139,7 +1139,10 @@ a.phabricator-remarkup-embed-image img{background:white;}
   function ins(ta, tok) { insT(ta, tok, tok); }
   function insT(ta, t1, t2) { var s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(t1 + ta.value.substring(s, e) + t2, s, e, 'select'); }
   window.addEventListener('keydown', function (e) {
-    if (document.activeElement.type !== 'textarea') return; var ta = document.activeElement;
+    if (document.activeElement.type !== 'textarea') return;
+    var ta = document.activeElement;
+    /* Keep native editing behavior for non-primary textareas (e.g. table modal). */
+    if (!$.activeTA || ta !== $.activeTA) return;
     if (e.ctrlKey && e.key === 'b') { ins(ta, '**'); ta.setSelectionRange(ta.selectionEnd - 2, ta.selectionEnd - 2); e.preventDefault(); }
     else if (e.ctrlKey && e.key === 'i') { ins(ta, '//'); ta.setSelectionRange(ta.selectionEnd - 2, ta.selectionEnd - 2); e.preventDefault(); }
     else if (e.ctrlKey && e.key === 's') { e.preventDefault(); document.getElementById('_PHE_SAVE').click(); }
@@ -1230,6 +1233,19 @@ a.phabricator-remarkup-embed-image img{background:white;}
         ta.rows = 1;
         ta.dataset.row = r; ta.dataset.col = c;
         ta.addEventListener('input', function () { autoSize(ta); });
+        ta.addEventListener('keydown', function (e) {
+          if (e.key !== 'Tab') return;
+          e.preventDefault();
+          var cells = Array.from(tbl.querySelectorAll('td textarea'));
+          var idx = cells.indexOf(ta);
+          if (idx < 0) return;
+          var next = idx + (e.shiftKey ? -1 : 1);
+          if (next < 0) next = cells.length - 1;
+          if (next >= cells.length) next = 0;
+          var nextTa = cells[next];
+          nextTa.focus();
+          nextTa.select();
+        });
         td.appendChild(ta);
         return td;
       }
