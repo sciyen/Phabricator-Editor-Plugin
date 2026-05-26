@@ -530,6 +530,71 @@ a.phabricator-remarkup-embed-image img{background:white;}
   }
   var _mergeBusy = false;
 
+  function actionPath(action) {
+    try {
+      return new URL(action || '', location.href).pathname;
+    } catch (_) {
+      return action || '';
+    }
+  }
+
+  function isEventEditForm(form) {
+    if (!form) return false;
+    return /\/calendar\/event\/edit\//.test(actionPath(form.getAttribute('action') || ''));
+  }
+
+  function findRemoteForm(localForm, remoteDoc) {
+    if (!remoteDoc) return null;
+    var localPath = actionPath(localForm ? localForm.getAttribute('action') || '' : '');
+    if (localPath) {
+      var forms = Array.from(remoteDoc.querySelectorAll('form'));
+      for (var i = 0; i < forms.length; i++) {
+        if (actionPath(forms[i].getAttribute('action') || '') === localPath) return forms[i];
+      }
+    }
+    return remoteDoc.querySelector('form');
+  }
+
+  function collectInviteeFields(form) {
+    if (!form) return [];
+    var nameRe = /(invitee|invitees|attendee|participant|guest)/i;
+    return Array.from(form.querySelectorAll('input[name],select[name],textarea[name]')).filter(function (el) {
+      var name = el.name || '';
+      if (!nameRe.test(name)) return false;
+      if (el.tagName === 'INPUT') {
+        var type = (el.type || '').toLowerCase();
+        if (type === 'submit' || type === 'button' || type === 'file') return false;
+      }
+      return true;
+    });
+  }
+
+  function syncRemoteInvitees(localForm, remoteDoc) {
+    if (!isEventEditForm(localForm)) return;
+    var remoteForm = findRemoteForm(localForm, remoteDoc);
+    if (!remoteForm) return;
+
+    var localInvitees = collectInviteeFields(localForm);
+    var remoteInvitees = collectInviteeFields(remoteForm);
+    if (!remoteInvitees.length) return;
+
+    localInvitees.forEach(function (el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    remoteInvitees.forEach(function (el) {
+      localForm.appendChild(el.cloneNode(true));
+    });
+  }
+
+  function submitMergedForm(form, remoteDoc, mergedText) {
+    syncRemoteInvitees(form, remoteDoc);
+    if (typeof mergedText === 'string') {
+      getTA().value = mergedText;
+      $.mergeBase = mergedText;
+    }
+    form.submit();
+  }
+
   async function doAutoMerge() {
     if (_mergeBusy) return;
     _mergeBusy = true;
@@ -552,19 +617,19 @@ a.phabricator-remarkup-embed-image img{background:white;}
 
       /* Safety: if remote textarea not found or THEIRS is empty but we had content,
          fall back to direct submit to prevent data loss. */
-      if (!THEIRS && $.mergeBase) { form.submit(); return; }
-      if (MINE === THEIRS) { form.submit(); return; }
+      if (!THEIRS && $.mergeBase) { submitMergedForm(form, doc2); return; }
+      if (MINE === THEIRS) { submitMergedForm(form, doc2); return; }
       var segs = threeWayMerge($.mergeBase, MINE, THEIRS);
       var autoN = segs.filter(function (s) { return s.autoResolved; }).length;
       if (!segs.filter(function (s) { return s.type === 'conflict'; }).length) {
         var merged = segs.map(function (s) { return s.text; }).join('');
         if (confirm('✅ Auto-merged!' + (autoN ? '\n(' + autoN + ' whitespace diff(s) ignored)' : '') + '\n\nOK to save')) {
-          getTA().value = merged; $.mergeBase = merged; form.submit();
+          submitMergedForm(form, doc2, merged);
         }
         return;
       }
       showConflictUI(segs, autoN,
-        function (r) { getTA().value = r; $.mergeBase = r; form.submit(); },
+        function (r) { submitMergedForm(form, doc2, r); },
         function () { getTA().value = MINE; }
       );
     } finally {
