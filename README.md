@@ -10,7 +10,17 @@ A bookmarklet injected into Phabricator Remarkup pages, providing full-screen ed
 ## Usage
 - **!! Important !!** Currently supports `Task Maniphest`, `Events`, `Comment Editor`, and `New Comment` only.
 - **!! Important !!** For `New Comment`, you must type some text in the editor to show the preview panel before using full-screen editing mode.
-- **!! Important !!** For `Events`, the preview does not update in real time. You need to re-open full-screen editing mode to see the latest content.
+
+## Version
+- Current version: `v2.2`
+
+## v2.2 Changes
+- AutoMerge now preserves Event invitees/attendees fields on submit.
+- Event preview refresh is now aligned with task behavior and keeps scroll alignment after render completion.
+- Native editing behavior is preserved better in textarea contexts, including table editor interaction.
+- Table editor supports `Tab` / `Shift-Tab` cell navigation.
+- Added floating `!!` highlight toggle button with table-aware behavior and overlap avoidance with table editor button.
+- Fixed style block structure regression affecting minimap/highlight button CSS application.
 
 ## Features
 
