@@ -162,7 +162,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
   padding:3px 9px;font-size:11.5px;color:${MMTIPCOL};
   white-space:nowrap;opacity:0;transition:opacity .15s;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}`;
+}
 #_PHE_HLBTN{
   position:fixed;z-index:9999999;display:none;
   width:24px;height:24px;border-radius:4px;
@@ -175,6 +175,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
 #_PHE_HLBTN.is-on{background:#16a34a;}
 #_PHE_HLBTN.is-off{background:#6b7280;}
 #_PHE_HLBTN:hover{filter:brightness(1.08);transform:translateY(-1px);}
+`;
     document.head.appendChild(s);
   })();
 
