@@ -1,6 +1,6 @@
 javascript: (function () {
   'use strict';
-  var PLUGIN_VERSION = 'v2.1';
+  var PLUGIN_VERSION = 'v2.2';
   if (document.getElementById('_PHE_TB')) { alert('Already active!'); return; }
 
   var $ = {
@@ -865,6 +865,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
         b.style.pointerEvents = '';
         b.style.opacity = '';
       });
+      ensureHighlightAssistButton($.remarkEl, ta);
       var currentPv = getActivePreviewEl(form);
       if (currentPv) {
         if (currentPv !== $.previewEl) $.previewEl = currentPv;
