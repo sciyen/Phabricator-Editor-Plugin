@@ -60,11 +60,13 @@ def update_bat_bookmarklet(bat_path, bookmarklet, version):
     start_idx = content.find(start_marker)
     end_idx = content.find(end_marker)
     if start_idx == -1 or end_idx == -1 or end_idx <= start_idx:
-        raise RuntimeError('Could not locate URL markers in install-bookmarklet.bat')
+        msg = 'Could not locate URL markers in install-bookmarklet.bat'
+        raise RuntimeError(msg)
 
     line_start = content.find('\n', start_idx)
     if line_start == -1:
-        raise RuntimeError('Invalid install-bookmarklet.bat format near URL_START')
+        msg = 'Invalid install-bookmarklet.bat format near URL_START'
+        raise RuntimeError(msg)
     line_start += 1
 
     before = content[:line_start]
@@ -82,7 +84,8 @@ def update_bat_bookmarklet(bat_path, bookmarklet, version):
             updated_lines.append(line)
 
     if not replaced_bm_name:
-        raise RuntimeError('Could not find BM_NAME line in install-bookmarklet.bat')
+        msg = 'Could not find BM_NAME line in install-bookmarklet.bat'
+        raise RuntimeError(msg)
 
     bat_path.write_text('\n'.join(updated_lines) + '\n', encoding='utf-8')
 
