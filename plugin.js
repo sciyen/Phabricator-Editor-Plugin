@@ -163,6 +163,18 @@ a.phabricator-remarkup-embed-image img{background:white;}
   white-space:nowrap;opacity:0;transition:opacity .15s;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }`;
+#_PHE_HLBTN{
+  position:fixed;z-index:9999999;display:none;
+  width:24px;height:24px;border-radius:4px;
+  align-items:center;justify-content:center;
+  border:none;background:#6b7280;color:#fff;
+  font-size:10px;font-weight:700;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  cursor:pointer;
+}
+#_PHE_HLBTN.is-on{background:#16a34a;}
+#_PHE_HLBTN.is-off{background:#6b7280;}
+#_PHE_HLBTN:hover{filter:brightness(1.08);transform:translateY(-1px);}
     document.head.appendChild(s);
   })();
 
@@ -1037,6 +1049,235 @@ a.phabricator-remarkup-embed-image img{background:white;}
     }
   });
 
+  function toggleHighlightSelection(ta) {
+    if (!ta) return;
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (s === e) return;
+
+    var v = ta.value;
+    var selected = v.substring(s, e);
+
+    if (selected.length >= 4 && selected.slice(0, 2) === '!!' && selected.slice(-2) === '!!') {
+      ta.setRangeText(selected.slice(2, -2), s, e, 'select');
+      ta.setSelectionRange(s, e - 4);
+    } else if (s >= 2 && e + 2 <= v.length && v.substring(s - 2, s) === '!!' && v.substring(e, e + 2) === '!!') {
+      ta.setRangeText(selected, s - 2, e + 2, 'select');
+      ta.setSelectionRange(s - 2, e - 2);
+    } else {
+      ta.setRangeText('!!' + selected + '!!', s, e, 'select');
+      ta.setSelectionRange(s + 2, e + 2);
+    }
+
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  var _hlFloatBtn = null;
+  var _hlFloatTA = null;
+  var _hlFloatGlobalBound = false;
+  var _hlPinnedPos = null;
+  var _hlIgnoreMouseUp = false;
+  var _hlDragStartTA = null;
+
+  function hideHighlightFloatButton() {
+    if (_hlFloatBtn) _hlFloatBtn.style.display = 'none';
+  }
+
+  function adjustHighlightAwayFromTableBtn() {
+    if (!_hlFloatBtn || _hlFloatBtn.style.display === 'none') return;
+    var tblBtn = document.getElementById('_PHE_TBLBTN');
+    if (!tblBtn || tblBtn.style.display === 'none') return;
+
+    var h = _hlFloatBtn.getBoundingClientRect();
+    var t = tblBtn.getBoundingClientRect();
+    var overlapX = h.left < t.right && h.right > t.left;
+    var overlapY = h.top < t.bottom && h.bottom > t.top;
+    if (!overlapX || !overlapY) return;
+
+    var bw = h.width || 24, bh = h.height || 24, pad = 8;
+    var left = h.left, top = h.top;
+
+    var upTop = t.top - bh - pad;
+    if (upTop >= pad) {
+      top = upTop;
+    } else {
+      var rightLeft = t.right + pad;
+      if (rightLeft <= window.innerWidth - bw - pad) {
+        left = rightLeft;
+      } else {
+        var leftLeft = t.left - bw - pad;
+        left = Math.max(pad, leftLeft);
+      }
+    }
+
+    _hlPinnedPos = { left: left, top: top };
+    _hlFloatBtn.style.left = left + 'px';
+    _hlFloatBtn.style.top = top + 'px';
+  }
+
+  function showHighlightFloatButtonAt(x, y) {
+    if (!_hlFloatBtn) return;
+    var bw = 24, bh = 24, pad = 8;
+    var left = x + 8;
+    var top = y + 8;
+    left = Math.max(pad, Math.min(window.innerWidth - bw - pad, left));
+    top = Math.max(pad, Math.min(window.innerHeight - bh - pad, top));
+
+    _hlPinnedPos = { left: left, top: top };
+    _hlFloatBtn.style.left = left + 'px';
+    _hlFloatBtn.style.top = top + 'px';
+    _hlFloatBtn.style.display = 'inline-flex';
+
+    /* Table button and highlight button are both shown on mouseup timers.
+       Re-check after paint to avoid race-condition overlap. */
+    adjustHighlightAwayFromTableBtn();
+    requestAnimationFrame(adjustHighlightAwayFromTableBtn);
+    setTimeout(adjustHighlightAwayFromTableBtn, 20);
+  }
+
+  function isHighlightSelectionOn(ta) {
+    if (!ta) return false;
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (typeof s !== 'number' || typeof e !== 'number' || s === e) return false;
+    var v = ta.value;
+    var selected = v.substring(s, e);
+    if (selected.length >= 4 && selected.slice(0, 2) === '!!' && selected.slice(-2) === '!!') return true;
+    if (s >= 2 && e + 2 <= v.length && v.substring(s - 2, s) === '!!' && v.substring(e, e + 2) === '!!') return true;
+    return false;
+  }
+
+  function updateHighlightButtonState(ta) {
+    if (!_hlFloatBtn) return;
+    var on = isHighlightSelectionOn(ta);
+    _hlFloatBtn.classList.toggle('is-on', on);
+    _hlFloatBtn.classList.toggle('is-off', !on);
+  }
+
+  function syncHighlightFloatVisibility() {
+    if (!_hlFloatBtn || _hlFloatBtn.style.display === 'none') return;
+    var ta = getCurrentHighlightTA();
+    if (!ta) { hideHighlightFloatButton(); return; }
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (typeof s !== 'number' || typeof e !== 'number' || s === e) {
+      hideHighlightFloatButton();
+      return;
+    }
+    _hlFloatTA = ta;
+    updateHighlightButtonState(ta);
+  }
+
+  function getCurrentHighlightTA() {
+    if (!$.active) return null;
+    var ae = document.activeElement;
+    var inTableEditor = function (el) {
+      return !!(el && el.tagName === 'TEXTAREA' && el.closest && el.closest('#_PHE_TBLMOD'));
+    };
+    if (ae && ae.tagName === 'TEXTAREA') {
+      if (inTableEditor(ae)) return ae;
+      if (!$.activeTA || ae === $.activeTA) return ae;
+    }
+    if (_hlFloatTA && document.body.contains(_hlFloatTA)) {
+      if (inTableEditor(_hlFloatTA)) return _hlFloatTA;
+      if (!$.activeTA || _hlFloatTA === $.activeTA) return _hlFloatTA;
+    }
+    if ($.activeTA && document.body.contains($.activeTA)) return $.activeTA;
+    return null;
+  }
+
+  function updateHighlightFloatButtonByMouse(e) {
+    if (_hlIgnoreMouseUp || (e && e.target === _hlFloatBtn)) {
+      _hlIgnoreMouseUp = false;
+      return;
+    }
+    setTimeout(function () {
+      var target = e ? e.target : null;
+      var ta = getCurrentHighlightTA();
+      if (!ta) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+
+      var targetTa = target && target.closest ? target.closest('textarea') : null;
+      var taInTable = !!(ta.closest && ta.closest('#_PHE_TBLMOD'));
+      var clickInTable = !!(target && target.closest && target.closest('#_PHE_TBLMOD'));
+      var draggedFromSameTA = (_hlDragStartTA && _hlDragStartTA === ta);
+
+      if (targetTa) {
+        if (targetTa !== ta && !draggedFromSameTA) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+      } else {
+        /* Allow non-textarea targets inside table editor (td/tr wrappers),
+           and allow mouseup outside when drag started from the same textarea. */
+        if (!(taInTable && clickInTable) && !draggedFromSameTA) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+      }
+
+      var s = ta.selectionStart, end = ta.selectionEnd;
+      if (typeof s !== 'number' || typeof end !== 'number' || s === end) {
+        _hlDragStartTA = null;
+        hideHighlightFloatButton();
+        return;
+      }
+      _hlFloatTA = ta;
+      updateHighlightButtonState(ta);
+      showHighlightFloatButtonAt(e.clientX, e.clientY);
+      _hlDragStartTA = null;
+    }, 10);
+  }
+
+  function ensureHighlightAssistButton(container, ta) {
+    if (!ta) return;
+    if (container) {
+      container.querySelectorAll('.phe-highlight-btn').forEach(function (n) { n.remove(); });
+    }
+
+    _hlFloatTA = ta;
+
+    if (!_hlFloatBtn) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = '_PHE_HLBTN';
+      btn.textContent = '!!';
+      btn.setAttribute('data-phe-highlight', '1');
+      btn.title = 'Toggle highlight (!!text!!).';
+      btn.setAttribute('aria-label', 'Toggle highlight');
+      btn.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        _hlIgnoreMouseUp = true;
+      });
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var activeTa = getCurrentHighlightTA();
+        if (!activeTa) return;
+        _hlFloatTA = activeTa;
+        focusNoScroll(activeTa);
+        toggleHighlightSelection(activeTa);
+        updateHighlightButtonState(activeTa);
+        if (_hlPinnedPos) {
+          _hlFloatBtn.style.left = _hlPinnedPos.left + 'px';
+          _hlFloatBtn.style.top = _hlPinnedPos.top + 'px';
+          _hlFloatBtn.style.display = 'inline-flex';
+        }
+        setTimeout(syncHighlightFloatVisibility, 0);
+      });
+      document.body.appendChild(btn);
+      _hlFloatBtn = btn;
+    }
+
+    if (!_hlFloatGlobalBound) {
+      window.addEventListener('mousedown', function (e) {
+        var target = e ? e.target : null;
+        var targetTa = target && target.closest ? target.closest('textarea') : null;
+        if (targetTa) {
+          _hlDragStartTA = targetTa;
+          return;
+        }
+        _hlDragStartTA = null;
+      }, true);
+      window.addEventListener('mouseup', updateHighlightFloatButtonByMouse, true);
+      window.addEventListener('keyup', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      window.addEventListener('input', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      document.addEventListener('selectionchange', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      _hlFloatGlobalBound = true;
+    }
+  }
+
   document.getElementById('_PHE_EDIT').addEventListener('click', function () {
     if (!$.active) {
       var bars = document.getElementsByClassName('remarkup-assist-bar');
@@ -1073,6 +1314,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
         ta.addEventListener('scroll', function () { if ($.backdrop) $.backdrop.scrollTop = ta.scrollTop; });
         $.syntaxEnabled = true;
         document.getElementById('_PHE_SYNTAX').classList.add('on');
+        ensureHighlightAssistButton(container, ta);
         ta.addEventListener('input', schedulePreviewRefresh);
         ta.addEventListener('input', updateSaveBtn);
         $.syncer = new ScrollSyncer(ta);
@@ -1086,6 +1328,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       if ($.syncer) { $.syncer.destroy(); $.syncer = null; }
       $.activeTA = null;
       clearTimeout(_pvTimer);
+      stopPreviewWait();
       stopMinimap();
       if ($.remarkEl) {
         $.remarkEl.removeAttribute('style');
@@ -1099,6 +1342,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       }
       if ($.previewEl) $.previewEl.removeAttribute('style');
       if ($.backdrop && $.backdrop.parentElement) $.backdrop.parentElement.removeChild($.backdrop);
+      hideHighlightFloatButton();
       $.backdrop = null; DIV.style.display = 'none';
       document.getElementById('_PHE_SYNTAX').classList.remove('on');
       if ($.isMulti) { setPreview(true); hideDialog(false); }
