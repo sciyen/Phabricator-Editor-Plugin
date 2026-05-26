@@ -640,6 +640,116 @@ a.phabricator-remarkup-embed-image img{background:white;}
      LIVE PREVIEW REFRESH
      ════════════════════════════════════════════════════════════ */
   var _pvTimer = null, _pvLastText = '';
+  var _pvRefreshToken = 0;
+  var _pvWaitObserver = null;
+
+  function stopPreviewWait() {
+    if (_pvWaitObserver) {
+      _pvWaitObserver.disconnect();
+      _pvWaitObserver = null;
+    }
+  }
+
+  function waitPreviewUpdated(form, token, onReady) {
+    stopPreviewWait();
+
+    function isPreviewNode(node) {
+      if (!node) return false;
+      var el = node.nodeType === 1 ? node : node.parentElement;
+      if (!el) return false;
+
+      var pv = getActivePreviewEl(form);
+      if (pv && (el === pv || pv.contains(el) || el.contains(pv))) return true;
+
+      if (!el.matches || !el.closest) return false;
+      var SEL = '.remarkup-inline-preview, .phui-comment-preview-view div.phui-timeline-view, .phui-remarkup-preview';
+      return el.matches(SEL) || !!el.closest(SEL);
+    }
+
+    function mutationTouchesPreview(m) {
+      if (isPreviewNode(m.target)) return true;
+      if (Array.from(m.addedNodes || []).some(isPreviewNode)) return true;
+      if (Array.from(m.removedNodes || []).some(isPreviewNode)) return true;
+      return false;
+    }
+
+    function getPreviewState() {
+      var el = getActivePreviewEl(form);
+      if (!el) return { el: null, sig: '', renderable: false, textLen: 0, childCount: 0 };
+      var textLen = ((el.textContent || '').trim()).length;
+      var childCount = el.childElementCount;
+      var sig = childCount + '|' + el.scrollHeight + '|' + el.clientHeight + '|' + textLen;
+      return {
+        el: el,
+        sig: sig,
+        renderable: childCount > 0 || textLen > 0,
+        textLen: textLen,
+        childCount: childCount
+      };
+    }
+
+    var beforeState = getPreviewState();
+    var beforePv = beforeState.el;
+    var beforeSig = beforeState.sig;
+
+    var done = false;
+    function finish() {
+      if (done || token !== _pvRefreshToken) return;
+      done = true;
+      stopPreviewWait();
+      requestAnimationFrame(onReady);
+    }
+
+    var root = document.body || form || $.remarkEl;
+    if (!root) {
+      finish();
+      return;
+    }
+
+    _pvWaitObserver = new MutationObserver(function (mutations) {
+      if (token !== _pvRefreshToken) return;
+      var touched = mutations.some(mutationTouchesPreview);
+      if (touched) {
+        sawMutation = true;
+      }
+    });
+    _pvWaitObserver.observe(root, { childList: true, subtree: true, characterData: true });
+
+    /* Wait until preview state is stable for several frames after update begins. */
+    var sawMutation = false;
+    var stableFrames = 0;
+    var lastSig = beforeSig;
+    var frames = 0;
+    (function checkByFrame() {
+      if (done || token !== _pvRefreshToken) return;
+      var st = getPreviewState();
+      var changed = (!!st.el && !beforePv) ||
+        (!!st.el && !!beforePv && st.el !== beforePv) ||
+        (st.sig !== beforeSig);
+
+      if (changed && !sawMutation) {
+        sawMutation = true;
+      }
+
+      if (sawMutation) {
+        if (st.renderable && st.sig === lastSig) stableFrames++;
+        else stableFrames = 0;
+
+        if (stableFrames >= 6) {
+          finish();
+          return;
+        }
+      }
+
+      lastSig = st.sig;
+      frames++;
+      if (frames >= 300) {
+        finish();
+        return;
+      }
+      requestAnimationFrame(checkByFrame);
+    })();
+  }
 
   function schedulePreviewRefresh() {
     if (!$.active) return;
@@ -654,19 +764,79 @@ a.phabricator-remarkup-embed-image img{background:white;}
     return btn ? btn.parentElement : null;
   }
 
+  function getActivePreviewEl(form) {
+    var livePv = form ? (form.querySelector('.remarkup-inline-preview') ||
+      form.querySelector('.phui-comment-preview-view div.phui-timeline-view') ||
+      form.querySelector('.phui-remarkup-preview')) : null;
+    return livePv || $.previewEl || null;
+  }
+
+  function shouldForcePreviewToggle() {
+    return $.isMulti || /\/calendar\/event\/edit\//.test(PAGE);
+  }
+
+  function focusNoScroll(ta) {
+    if (!ta) return;
+    try {
+      ta.focus({ preventScroll: true });
+    } catch (_) {
+      ta.focus();
+    }
+  }
+
   function doPreviewRefresh() {
     if (!$.active || !$.previewEl || !$.remarkEl) return;
     var ta = $.remarkEl.querySelector('textarea');
     if (!ta) return;
+    var form = $.remarkEl.closest('form');
     var text = ta.value;
     if (text === _pvLastText) return;
     _pvLastText = text;
+    _pvRefreshToken++;
+    var refreshToken = _pvRefreshToken;
+    stopPreviewWait();
+
+    function alignPreviewToEditor() {
+      if (refreshToken !== _pvRefreshToken) return;
+
+      var nextPv = getActivePreviewEl(form) || $.previewEl;
+      if (nextPv && nextPv !== $.previewEl) {
+        if ($.previewEl) $.previewEl.removeAttribute('style');
+        $.previewEl = nextPv;
+        if (_mmMO) { _mmMO.disconnect(); }
+        _mmMO = new MutationObserver(function () { schedRebuild(250); });
+        _mmMO.observe($.previewEl, { childList: true, subtree: true });
+        schedRebuild(300);
+      }
+
+      if (!$.previewEl) return;
+
+      applyRight($.previewEl);
+
+      var taRange = Math.max(1, ta.scrollHeight - ta.clientHeight);
+      var ratio = ta.scrollTop / taRange;
+      if (taRange <= 1) {
+        var formRect = ($.remarkEl || ta).getBoundingClientRect();
+        var viewH = Math.max(1, window.innerHeight);
+        var docTop = window.scrollY + formRect.top;
+        var formH = Math.max(1, formRect.height);
+        var centerY = window.scrollY + (viewH * 0.5);
+        ratio = (centerY - docTop) / formH;
+      }
+      ratio = Math.max(0, Math.min(1, ratio));
+      var pvRange = Math.max(1, $.previewEl.scrollHeight - $.previewEl.clientHeight);
+      var nextPvTop = Math.max(0, Math.min(pvRange, Math.round(ratio * pvRange)));
+      $.previewEl.scrollTop = nextPvTop;
+      focusNoScroll(ta);
+    }
+
+    waitPreviewUpdated(form, refreshToken, alignPreviewToEditor);
 
     /* Toggle the preview button within the same remarkup container
        to trigger Phabricator's native preview refresh mechanism.
-       Only needed when editing an existing comment (isMulti);
-       for task editing and new comments the preview updates via native events. */
-    var pvBtn = $.isMulti ? findPreviewBtnInContainer() : null;
+       Needed for existing comment edit (isMulti) and calendar event edit pages;
+       task editing and new comments usually update via native events. */
+    var pvBtn = shouldForcePreviewToggle() ? findPreviewBtnInContainer() : null;
     if (pvBtn) {
       if (pvBtn.classList.contains('preview-active')) {
         pvBtn.click(); pvBtn.click();
@@ -683,23 +853,11 @@ a.phabricator-remarkup-embed-image img{background:white;}
         b.style.pointerEvents = '';
         b.style.opacity = '';
       });
-      /* Re-capture the preview element after Phabricator updates it */
-      var newPv = $.remarkEl.closest('form') ?
-        $.remarkEl.closest('form').querySelector('.remarkup-inline-preview') : null;
-      if (newPv) {
-        if (newPv !== $.previewEl) {
-          /* Preview element changed — clean up old one and rebind observer */
-          if ($.previewEl) $.previewEl.removeAttribute('style');
-          $.previewEl = newPv;
-          if (_mmMO) { _mmMO.disconnect(); }
-          _mmMO = new MutationObserver(function () { schedRebuild(250); });
-          _mmMO.observe($.previewEl, { childList: true, subtree: true });
-          schedRebuild(300);
-        }
-        /* Always re-apply right-panel layout — Phabricator's toggle resets styles */
+      var currentPv = getActivePreviewEl(form);
+      if (currentPv) {
+        if (currentPv !== $.previewEl) $.previewEl = currentPv;
         applyRight($.previewEl);
       }
-      ta.focus();
       return;
     }
 
