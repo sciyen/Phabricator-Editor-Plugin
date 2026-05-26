@@ -1,5 +1,6 @@
 javascript: (function () {
   'use strict';
+  var PLUGIN_VERSION = 'v2.1';
   if (document.getElementById('_PHE_TB')) { alert('Already active!'); return; }
 
   var $ = {
@@ -657,7 +658,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
      ════════════════════════════════════════════════════════════ */
   var TB_EL = document.createElement('div'); TB_EL.id = '_PHE_TB';
   TB_EL.innerHTML =
-    '<span class="logo">✏ Phab Editor</span>' +
+    '<span class="logo">✏ Phab Editor ' + PLUGIN_VERSION + '</span>' +
     '<div class="sep"></div>' +
     '<button id="_PHE_EDIT" class="ph-btn">Edit Mode</button>' +
     '<button id="_PHE_SYNTAX" class="ph-btn">Syntax Highlight</button>' +
