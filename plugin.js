@@ -1,5 +1,6 @@
 javascript: (function () {
   'use strict';
+  var PLUGIN_VERSION = 'v2.2';
   if (document.getElementById('_PHE_TB')) { alert('Already active!'); return; }
 
   var $ = {
@@ -161,7 +162,20 @@ a.phabricator-remarkup-embed-image img{background:white;}
   padding:3px 9px;font-size:11.5px;color:${MMTIPCOL};
   white-space:nowrap;opacity:0;transition:opacity .15s;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}`;
+}
+#_PHE_HLBTN{
+  position:fixed;z-index:9999999;display:none;
+  width:24px;height:24px;border-radius:4px;
+  align-items:center;justify-content:center;
+  border:none;background:#6b7280;color:#fff;
+  font-size:10px;font-weight:700;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  cursor:pointer;
+}
+#_PHE_HLBTN.is-on{background:#16a34a;}
+#_PHE_HLBTN.is-off{background:#6b7280;}
+#_PHE_HLBTN:hover{filter:brightness(1.08);transform:translateY(-1px);}
+`;
     document.head.appendChild(s);
   })();
 
@@ -529,6 +543,71 @@ a.phabricator-remarkup-embed-image img{background:white;}
   }
   var _mergeBusy = false;
 
+  function actionPath(action) {
+    try {
+      return new URL(action || '', location.href).pathname;
+    } catch (_) {
+      return action || '';
+    }
+  }
+
+  function isEventEditForm(form) {
+    if (!form) return false;
+    return /\/calendar\/event\/edit\//.test(actionPath(form.getAttribute('action') || ''));
+  }
+
+  function findRemoteForm(localForm, remoteDoc) {
+    if (!remoteDoc) return null;
+    var localPath = actionPath(localForm ? localForm.getAttribute('action') || '' : '');
+    if (localPath) {
+      var forms = Array.from(remoteDoc.querySelectorAll('form'));
+      for (var i = 0; i < forms.length; i++) {
+        if (actionPath(forms[i].getAttribute('action') || '') === localPath) return forms[i];
+      }
+    }
+    return remoteDoc.querySelector('form');
+  }
+
+  function collectInviteeFields(form) {
+    if (!form) return [];
+    var nameRe = /(invitee|invitees|attendee|participant|guest)/i;
+    return Array.from(form.querySelectorAll('input[name],select[name],textarea[name]')).filter(function (el) {
+      var name = el.name || '';
+      if (!nameRe.test(name)) return false;
+      if (el.tagName === 'INPUT') {
+        var type = (el.type || '').toLowerCase();
+        if (type === 'submit' || type === 'button' || type === 'file') return false;
+      }
+      return true;
+    });
+  }
+
+  function syncRemoteInvitees(localForm, remoteDoc) {
+    if (!isEventEditForm(localForm)) return;
+    var remoteForm = findRemoteForm(localForm, remoteDoc);
+    if (!remoteForm) return;
+
+    var localInvitees = collectInviteeFields(localForm);
+    var remoteInvitees = collectInviteeFields(remoteForm);
+    if (!remoteInvitees.length) return;
+
+    localInvitees.forEach(function (el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    remoteInvitees.forEach(function (el) {
+      localForm.appendChild(el.cloneNode(true));
+    });
+  }
+
+  function submitMergedForm(form, remoteDoc, mergedText) {
+    syncRemoteInvitees(form, remoteDoc);
+    if (typeof mergedText === 'string') {
+      getTA().value = mergedText;
+      $.mergeBase = mergedText;
+    }
+    form.submit();
+  }
+
   async function doAutoMerge() {
     if (_mergeBusy) return;
     _mergeBusy = true;
@@ -551,19 +630,19 @@ a.phabricator-remarkup-embed-image img{background:white;}
 
       /* Safety: if remote textarea not found or THEIRS is empty but we had content,
          fall back to direct submit to prevent data loss. */
-      if (!THEIRS && $.mergeBase) { form.submit(); return; }
-      if (MINE === THEIRS) { form.submit(); return; }
+      if (!THEIRS && $.mergeBase) { submitMergedForm(form, doc2); return; }
+      if (MINE === THEIRS) { submitMergedForm(form, doc2); return; }
       var segs = threeWayMerge($.mergeBase, MINE, THEIRS);
       var autoN = segs.filter(function (s) { return s.autoResolved; }).length;
       if (!segs.filter(function (s) { return s.type === 'conflict'; }).length) {
         var merged = segs.map(function (s) { return s.text; }).join('');
         if (confirm('✅ Auto-merged!' + (autoN ? '\n(' + autoN + ' whitespace diff(s) ignored)' : '') + '\n\nOK to save')) {
-          getTA().value = merged; $.mergeBase = merged; form.submit();
+          submitMergedForm(form, doc2, merged);
         }
         return;
       }
       showConflictUI(segs, autoN,
-        function (r) { getTA().value = r; $.mergeBase = r; form.submit(); },
+        function (r) { submitMergedForm(form, doc2, r); },
         function () { getTA().value = MINE; }
       );
     } finally {
@@ -574,6 +653,116 @@ a.phabricator-remarkup-embed-image img{background:white;}
      LIVE PREVIEW REFRESH
      ════════════════════════════════════════════════════════════ */
   var _pvTimer = null, _pvLastText = '';
+  var _pvRefreshToken = 0;
+  var _pvWaitObserver = null;
+
+  function stopPreviewWait() {
+    if (_pvWaitObserver) {
+      _pvWaitObserver.disconnect();
+      _pvWaitObserver = null;
+    }
+  }
+
+  function waitPreviewUpdated(form, token, onReady) {
+    stopPreviewWait();
+
+    function isPreviewNode(node) {
+      if (!node) return false;
+      var el = node.nodeType === 1 ? node : node.parentElement;
+      if (!el) return false;
+
+      var pv = getActivePreviewEl(form);
+      if (pv && (el === pv || pv.contains(el) || el.contains(pv))) return true;
+
+      if (!el.matches || !el.closest) return false;
+      var SEL = '.remarkup-inline-preview, .phui-comment-preview-view div.phui-timeline-view, .phui-remarkup-preview';
+      return el.matches(SEL) || !!el.closest(SEL);
+    }
+
+    function mutationTouchesPreview(m) {
+      if (isPreviewNode(m.target)) return true;
+      if (Array.from(m.addedNodes || []).some(isPreviewNode)) return true;
+      if (Array.from(m.removedNodes || []).some(isPreviewNode)) return true;
+      return false;
+    }
+
+    function getPreviewState() {
+      var el = getActivePreviewEl(form);
+      if (!el) return { el: null, sig: '', renderable: false, textLen: 0, childCount: 0 };
+      var textLen = ((el.textContent || '').trim()).length;
+      var childCount = el.childElementCount;
+      var sig = childCount + '|' + el.scrollHeight + '|' + el.clientHeight + '|' + textLen;
+      return {
+        el: el,
+        sig: sig,
+        renderable: childCount > 0 || textLen > 0,
+        textLen: textLen,
+        childCount: childCount
+      };
+    }
+
+    var beforeState = getPreviewState();
+    var beforePv = beforeState.el;
+    var beforeSig = beforeState.sig;
+
+    var done = false;
+    function finish() {
+      if (done || token !== _pvRefreshToken) return;
+      done = true;
+      stopPreviewWait();
+      requestAnimationFrame(onReady);
+    }
+
+    var root = document.body || form || $.remarkEl;
+    if (!root) {
+      finish();
+      return;
+    }
+
+    _pvWaitObserver = new MutationObserver(function (mutations) {
+      if (token !== _pvRefreshToken) return;
+      var touched = mutations.some(mutationTouchesPreview);
+      if (touched) {
+        sawMutation = true;
+      }
+    });
+    _pvWaitObserver.observe(root, { childList: true, subtree: true, characterData: true });
+
+    /* Wait until preview state is stable for several frames after update begins. */
+    var sawMutation = false;
+    var stableFrames = 0;
+    var lastSig = beforeSig;
+    var frames = 0;
+    (function checkByFrame() {
+      if (done || token !== _pvRefreshToken) return;
+      var st = getPreviewState();
+      var changed = (!!st.el && !beforePv) ||
+        (!!st.el && !!beforePv && st.el !== beforePv) ||
+        (st.sig !== beforeSig);
+
+      if (changed && !sawMutation) {
+        sawMutation = true;
+      }
+
+      if (sawMutation) {
+        if (st.renderable && st.sig === lastSig) stableFrames++;
+        else stableFrames = 0;
+
+        if (stableFrames >= 6) {
+          finish();
+          return;
+        }
+      }
+
+      lastSig = st.sig;
+      frames++;
+      if (frames >= 300) {
+        finish();
+        return;
+      }
+      requestAnimationFrame(checkByFrame);
+    })();
+  }
 
   function schedulePreviewRefresh() {
     if (!$.active) return;
@@ -588,19 +777,79 @@ a.phabricator-remarkup-embed-image img{background:white;}
     return btn ? btn.parentElement : null;
   }
 
+  function getActivePreviewEl(form) {
+    var livePv = form ? (form.querySelector('.remarkup-inline-preview') ||
+      form.querySelector('.phui-comment-preview-view div.phui-timeline-view') ||
+      form.querySelector('.phui-remarkup-preview')) : null;
+    return livePv || $.previewEl || null;
+  }
+
+  function shouldForcePreviewToggle() {
+    return $.isMulti || /\/calendar\/event\/edit\//.test(PAGE);
+  }
+
+  function focusNoScroll(ta) {
+    if (!ta) return;
+    try {
+      ta.focus({ preventScroll: true });
+    } catch (_) {
+      ta.focus();
+    }
+  }
+
   function doPreviewRefresh() {
     if (!$.active || !$.previewEl || !$.remarkEl) return;
     var ta = $.remarkEl.querySelector('textarea');
     if (!ta) return;
+    var form = $.remarkEl.closest('form');
     var text = ta.value;
     if (text === _pvLastText) return;
     _pvLastText = text;
+    _pvRefreshToken++;
+    var refreshToken = _pvRefreshToken;
+    stopPreviewWait();
+
+    function alignPreviewToEditor() {
+      if (refreshToken !== _pvRefreshToken) return;
+
+      var nextPv = getActivePreviewEl(form) || $.previewEl;
+      if (nextPv && nextPv !== $.previewEl) {
+        if ($.previewEl) $.previewEl.removeAttribute('style');
+        $.previewEl = nextPv;
+        if (_mmMO) { _mmMO.disconnect(); }
+        _mmMO = new MutationObserver(function () { schedRebuild(250); });
+        _mmMO.observe($.previewEl, { childList: true, subtree: true });
+        schedRebuild(300);
+      }
+
+      if (!$.previewEl) return;
+
+      applyRight($.previewEl);
+
+      var taRange = Math.max(1, ta.scrollHeight - ta.clientHeight);
+      var ratio = ta.scrollTop / taRange;
+      if (taRange <= 1) {
+        var formRect = ($.remarkEl || ta).getBoundingClientRect();
+        var viewH = Math.max(1, window.innerHeight);
+        var docTop = window.scrollY + formRect.top;
+        var formH = Math.max(1, formRect.height);
+        var centerY = window.scrollY + (viewH * 0.5);
+        ratio = (centerY - docTop) / formH;
+      }
+      ratio = Math.max(0, Math.min(1, ratio));
+      var pvRange = Math.max(1, $.previewEl.scrollHeight - $.previewEl.clientHeight);
+      var nextPvTop = Math.max(0, Math.min(pvRange, Math.round(ratio * pvRange)));
+      $.previewEl.scrollTop = nextPvTop;
+      focusNoScroll(ta);
+    }
+
+    waitPreviewUpdated(form, refreshToken, alignPreviewToEditor);
 
     /* Toggle the preview button within the same remarkup container
        to trigger Phabricator's native preview refresh mechanism.
-       Only needed when editing an existing comment (isMulti);
-       for task editing and new comments the preview updates via native events. */
-    var pvBtn = $.isMulti ? findPreviewBtnInContainer() : null;
+       Needed for existing comment edit (isMulti) and calendar event edit pages;
+       task editing and new comments usually update via native events. */
+    var pvBtn = shouldForcePreviewToggle() ? findPreviewBtnInContainer() : null;
     if (pvBtn) {
       if (pvBtn.classList.contains('preview-active')) {
         pvBtn.click(); pvBtn.click();
@@ -617,23 +866,12 @@ a.phabricator-remarkup-embed-image img{background:white;}
         b.style.pointerEvents = '';
         b.style.opacity = '';
       });
-      /* Re-capture the preview element after Phabricator updates it */
-      var newPv = $.remarkEl.closest('form') ?
-        $.remarkEl.closest('form').querySelector('.remarkup-inline-preview') : null;
-      if (newPv) {
-        if (newPv !== $.previewEl) {
-          /* Preview element changed — clean up old one and rebind observer */
-          if ($.previewEl) $.previewEl.removeAttribute('style');
-          $.previewEl = newPv;
-          if (_mmMO) { _mmMO.disconnect(); }
-          _mmMO = new MutationObserver(function () { schedRebuild(250); });
-          _mmMO.observe($.previewEl, { childList: true, subtree: true });
-          schedRebuild(300);
-        }
-        /* Always re-apply right-panel layout — Phabricator's toggle resets styles */
+      ensureHighlightAssistButton($.remarkEl, ta);
+      var currentPv = getActivePreviewEl(form);
+      if (currentPv) {
+        if (currentPv !== $.previewEl) $.previewEl = currentPv;
         applyRight($.previewEl);
       }
-      ta.focus();
       return;
     }
 
@@ -657,7 +895,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
      ════════════════════════════════════════════════════════════ */
   var TB_EL = document.createElement('div'); TB_EL.id = '_PHE_TB';
   TB_EL.innerHTML =
-    '<span class="logo">✏ Phab Editor</span>' +
+    '<span class="logo">✏ Phab Editor ' + PLUGIN_VERSION + '</span>' +
     '<div class="sep"></div>' +
     '<button id="_PHE_EDIT" class="ph-btn">Edit Mode</button>' +
     '<button id="_PHE_SYNTAX" class="ph-btn">Syntax Highlight</button>' +
@@ -813,6 +1051,235 @@ a.phabricator-remarkup-embed-image img{background:white;}
     }
   });
 
+  function toggleHighlightSelection(ta) {
+    if (!ta) return;
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (s === e) return;
+
+    var v = ta.value;
+    var selected = v.substring(s, e);
+
+    if (selected.length >= 4 && selected.slice(0, 2) === '!!' && selected.slice(-2) === '!!') {
+      ta.setRangeText(selected.slice(2, -2), s, e, 'select');
+      ta.setSelectionRange(s, e - 4);
+    } else if (s >= 2 && e + 2 <= v.length && v.substring(s - 2, s) === '!!' && v.substring(e, e + 2) === '!!') {
+      ta.setRangeText(selected, s - 2, e + 2, 'select');
+      ta.setSelectionRange(s - 2, e - 2);
+    } else {
+      ta.setRangeText('!!' + selected + '!!', s, e, 'select');
+      ta.setSelectionRange(s + 2, e + 2);
+    }
+
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    ta.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  var _hlFloatBtn = null;
+  var _hlFloatTA = null;
+  var _hlFloatGlobalBound = false;
+  var _hlPinnedPos = null;
+  var _hlIgnoreMouseUp = false;
+  var _hlDragStartTA = null;
+
+  function hideHighlightFloatButton() {
+    if (_hlFloatBtn) _hlFloatBtn.style.display = 'none';
+  }
+
+  function adjustHighlightAwayFromTableBtn() {
+    if (!_hlFloatBtn || _hlFloatBtn.style.display === 'none') return;
+    var tblBtn = document.getElementById('_PHE_TBLBTN');
+    if (!tblBtn || tblBtn.style.display === 'none') return;
+
+    var h = _hlFloatBtn.getBoundingClientRect();
+    var t = tblBtn.getBoundingClientRect();
+    var overlapX = h.left < t.right && h.right > t.left;
+    var overlapY = h.top < t.bottom && h.bottom > t.top;
+    if (!overlapX || !overlapY) return;
+
+    var bw = h.width || 24, bh = h.height || 24, pad = 8;
+    var left = h.left, top = h.top;
+
+    var upTop = t.top - bh - pad;
+    if (upTop >= pad) {
+      top = upTop;
+    } else {
+      var rightLeft = t.right + pad;
+      if (rightLeft <= window.innerWidth - bw - pad) {
+        left = rightLeft;
+      } else {
+        var leftLeft = t.left - bw - pad;
+        left = Math.max(pad, leftLeft);
+      }
+    }
+
+    _hlPinnedPos = { left: left, top: top };
+    _hlFloatBtn.style.left = left + 'px';
+    _hlFloatBtn.style.top = top + 'px';
+  }
+
+  function showHighlightFloatButtonAt(x, y) {
+    if (!_hlFloatBtn) return;
+    var bw = 24, bh = 24, pad = 8;
+    var left = x + 8;
+    var top = y + 8;
+    left = Math.max(pad, Math.min(window.innerWidth - bw - pad, left));
+    top = Math.max(pad, Math.min(window.innerHeight - bh - pad, top));
+
+    _hlPinnedPos = { left: left, top: top };
+    _hlFloatBtn.style.left = left + 'px';
+    _hlFloatBtn.style.top = top + 'px';
+    _hlFloatBtn.style.display = 'inline-flex';
+
+    /* Table button and highlight button are both shown on mouseup timers.
+       Re-check after paint to avoid race-condition overlap. */
+    adjustHighlightAwayFromTableBtn();
+    requestAnimationFrame(adjustHighlightAwayFromTableBtn);
+    setTimeout(adjustHighlightAwayFromTableBtn, 20);
+  }
+
+  function isHighlightSelectionOn(ta) {
+    if (!ta) return false;
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (typeof s !== 'number' || typeof e !== 'number' || s === e) return false;
+    var v = ta.value;
+    var selected = v.substring(s, e);
+    if (selected.length >= 4 && selected.slice(0, 2) === '!!' && selected.slice(-2) === '!!') return true;
+    if (s >= 2 && e + 2 <= v.length && v.substring(s - 2, s) === '!!' && v.substring(e, e + 2) === '!!') return true;
+    return false;
+  }
+
+  function updateHighlightButtonState(ta) {
+    if (!_hlFloatBtn) return;
+    var on = isHighlightSelectionOn(ta);
+    _hlFloatBtn.classList.toggle('is-on', on);
+    _hlFloatBtn.classList.toggle('is-off', !on);
+  }
+
+  function syncHighlightFloatVisibility() {
+    if (!_hlFloatBtn || _hlFloatBtn.style.display === 'none') return;
+    var ta = getCurrentHighlightTA();
+    if (!ta) { hideHighlightFloatButton(); return; }
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    if (typeof s !== 'number' || typeof e !== 'number' || s === e) {
+      hideHighlightFloatButton();
+      return;
+    }
+    _hlFloatTA = ta;
+    updateHighlightButtonState(ta);
+  }
+
+  function getCurrentHighlightTA() {
+    if (!$.active) return null;
+    var ae = document.activeElement;
+    var inTableEditor = function (el) {
+      return !!(el && el.tagName === 'TEXTAREA' && el.closest && el.closest('#_PHE_TBLMOD'));
+    };
+    if (ae && ae.tagName === 'TEXTAREA') {
+      if (inTableEditor(ae)) return ae;
+      if (!$.activeTA || ae === $.activeTA) return ae;
+    }
+    if (_hlFloatTA && document.body.contains(_hlFloatTA)) {
+      if (inTableEditor(_hlFloatTA)) return _hlFloatTA;
+      if (!$.activeTA || _hlFloatTA === $.activeTA) return _hlFloatTA;
+    }
+    if ($.activeTA && document.body.contains($.activeTA)) return $.activeTA;
+    return null;
+  }
+
+  function updateHighlightFloatButtonByMouse(e) {
+    if (_hlIgnoreMouseUp || (e && e.target === _hlFloatBtn)) {
+      _hlIgnoreMouseUp = false;
+      return;
+    }
+    setTimeout(function () {
+      var target = e ? e.target : null;
+      var ta = getCurrentHighlightTA();
+      if (!ta) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+
+      var targetTa = target && target.closest ? target.closest('textarea') : null;
+      var taInTable = !!(ta.closest && ta.closest('#_PHE_TBLMOD'));
+      var clickInTable = !!(target && target.closest && target.closest('#_PHE_TBLMOD'));
+      var draggedFromSameTA = (_hlDragStartTA && _hlDragStartTA === ta);
+
+      if (targetTa) {
+        if (targetTa !== ta && !draggedFromSameTA) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+      } else {
+        /* Allow non-textarea targets inside table editor (td/tr wrappers),
+           and allow mouseup outside when drag started from the same textarea. */
+        if (!(taInTable && clickInTable) && !draggedFromSameTA) { _hlDragStartTA = null; hideHighlightFloatButton(); return; }
+      }
+
+      var s = ta.selectionStart, end = ta.selectionEnd;
+      if (typeof s !== 'number' || typeof end !== 'number' || s === end) {
+        _hlDragStartTA = null;
+        hideHighlightFloatButton();
+        return;
+      }
+      _hlFloatTA = ta;
+      updateHighlightButtonState(ta);
+      showHighlightFloatButtonAt(e.clientX, e.clientY);
+      _hlDragStartTA = null;
+    }, 10);
+  }
+
+  function ensureHighlightAssistButton(container, ta) {
+    if (!ta) return;
+    if (container) {
+      container.querySelectorAll('.phe-highlight-btn').forEach(function (n) { n.remove(); });
+    }
+
+    _hlFloatTA = ta;
+
+    if (!_hlFloatBtn) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = '_PHE_HLBTN';
+      btn.textContent = '!!';
+      btn.setAttribute('data-phe-highlight', '1');
+      btn.title = 'Toggle highlight (!!text!!).';
+      btn.setAttribute('aria-label', 'Toggle highlight');
+      btn.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        _hlIgnoreMouseUp = true;
+      });
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var activeTa = getCurrentHighlightTA();
+        if (!activeTa) return;
+        _hlFloatTA = activeTa;
+        focusNoScroll(activeTa);
+        toggleHighlightSelection(activeTa);
+        updateHighlightButtonState(activeTa);
+        if (_hlPinnedPos) {
+          _hlFloatBtn.style.left = _hlPinnedPos.left + 'px';
+          _hlFloatBtn.style.top = _hlPinnedPos.top + 'px';
+          _hlFloatBtn.style.display = 'inline-flex';
+        }
+        setTimeout(syncHighlightFloatVisibility, 0);
+      });
+      document.body.appendChild(btn);
+      _hlFloatBtn = btn;
+    }
+
+    if (!_hlFloatGlobalBound) {
+      window.addEventListener('mousedown', function (e) {
+        var target = e ? e.target : null;
+        var targetTa = target && target.closest ? target.closest('textarea') : null;
+        if (targetTa) {
+          _hlDragStartTA = targetTa;
+          return;
+        }
+        _hlDragStartTA = null;
+      }, true);
+      window.addEventListener('mouseup', updateHighlightFloatButtonByMouse, true);
+      window.addEventListener('keyup', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      window.addEventListener('input', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      document.addEventListener('selectionchange', function () { setTimeout(syncHighlightFloatVisibility, 0); }, true);
+      _hlFloatGlobalBound = true;
+    }
+  }
+
   document.getElementById('_PHE_EDIT').addEventListener('click', function () {
     if (!$.active) {
       var bars = document.getElementsByClassName('remarkup-assist-bar');
@@ -849,6 +1316,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
         ta.addEventListener('scroll', function () { if ($.backdrop) $.backdrop.scrollTop = ta.scrollTop; });
         $.syntaxEnabled = true;
         document.getElementById('_PHE_SYNTAX').classList.add('on');
+        ensureHighlightAssistButton(container, ta);
         ta.addEventListener('input', schedulePreviewRefresh);
         ta.addEventListener('input', updateSaveBtn);
         $.syncer = new ScrollSyncer(ta);
@@ -862,6 +1330,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       if ($.syncer) { $.syncer.destroy(); $.syncer = null; }
       $.activeTA = null;
       clearTimeout(_pvTimer);
+      stopPreviewWait();
       stopMinimap();
       if ($.remarkEl) {
         $.remarkEl.removeAttribute('style');
@@ -875,6 +1344,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       }
       if ($.previewEl) $.previewEl.removeAttribute('style');
       if ($.backdrop && $.backdrop.parentElement) $.backdrop.parentElement.removeChild($.backdrop);
+      hideHighlightFloatButton();
       $.backdrop = null; DIV.style.display = 'none';
       document.getElementById('_PHE_SYNTAX').classList.remove('on');
       if ($.isMulti) { setPreview(true); hideDialog(false); }
@@ -915,7 +1385,10 @@ a.phabricator-remarkup-embed-image img{background:white;}
   function ins(ta, tok) { insT(ta, tok, tok); }
   function insT(ta, t1, t2) { var s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(t1 + ta.value.substring(s, e) + t2, s, e, 'select'); }
   window.addEventListener('keydown', function (e) {
-    if (document.activeElement.type !== 'textarea') return; var ta = document.activeElement;
+    if (document.activeElement.type !== 'textarea') return;
+    var ta = document.activeElement;
+    /* Keep native editing behavior for non-primary textareas (e.g. table modal). */
+    if (!$.activeTA || ta !== $.activeTA) return;
     if (e.ctrlKey && e.key === 'b') { ins(ta, '**'); ta.setSelectionRange(ta.selectionEnd - 2, ta.selectionEnd - 2); e.preventDefault(); }
     else if (e.ctrlKey && e.key === 'i') { ins(ta, '//'); ta.setSelectionRange(ta.selectionEnd - 2, ta.selectionEnd - 2); e.preventDefault(); }
     else if (e.ctrlKey && e.key === 's') { e.preventDefault(); document.getElementById('_PHE_SAVE').click(); }
@@ -1006,6 +1479,19 @@ a.phabricator-remarkup-embed-image img{background:white;}
         ta.rows = 1;
         ta.dataset.row = r; ta.dataset.col = c;
         ta.addEventListener('input', function () { autoSize(ta); });
+        ta.addEventListener('keydown', function (e) {
+          if (e.key !== 'Tab') return;
+          e.preventDefault();
+          var cells = Array.from(tbl.querySelectorAll('td textarea'));
+          var idx = cells.indexOf(ta);
+          if (idx < 0) return;
+          var next = idx + (e.shiftKey ? -1 : 1);
+          if (next < 0) next = cells.length - 1;
+          if (next >= cells.length) next = 0;
+          var nextTa = cells[next];
+          nextTa.focus();
+          nextTa.select();
+        });
         td.appendChild(ta);
         return td;
       }
