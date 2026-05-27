@@ -82,9 +82,9 @@ A bookmarklet injected into Phabricator Remarkup pages, providing full-screen ed
 
 ## Install (Windows One-Click)
 
-Use `install-phab-editor.bat` for automatic installation on Windows.
+Use [`install-phab-editor.bat`](https://github.com/Chungchiyu/Phabricator-Editor-Plugin/releases/download/v2.2/install-phab-editor-v2.2.bat) for automatic installation on Windows.
 
-1. Download this repository (or at least `install-phab-editor.bat`).
+1. Download this repository (or at least [`install-phab-editor.bat`](https://github.com/Chungchiyu/Phabricator-Editor-Plugin/releases/download/v2.2/install-phab-editor-v2.2.bat)).
 2. Double-click `install-phab-editor.bat`.
 3. Choose target browser:
     - Chrome
