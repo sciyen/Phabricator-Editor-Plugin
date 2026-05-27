@@ -41,6 +41,21 @@ $py = Get-Command python  -ErrorAction SilentlyContinue
 if (-not $py) { $py = Get-Command python3 -ErrorAction SilentlyContinue }
 
 $installedBrowsers = [System.Collections.Generic.List[string]]::new()
+$script:firstRunGuideShown = $false
+
+function Show-FirstRunGuide($browserName) {
+    if ($script:firstRunGuideShown) { return }
+    $script:firstRunGuideShown = $true
+    Write-Host "" 
+    Write-Host "  [教學] $browserName 可能是首次使用，尚未建立書籤/設定檔。" -ForegroundColor Yellow
+    Write-Host "  [教學] 請依序操作：" -ForegroundColor Yellow
+    Write-Host "    1) 關閉本安裝程式" -ForegroundColor Yellow
+    Write-Host "    2) 手動開啟 $browserName 一次" -ForegroundColor Yellow
+    Write-Host "    3) 新增任意一個暫時書籤" -ForegroundColor Yellow
+    Write-Host "    4) 完全關閉瀏覽器" -ForegroundColor Yellow
+    Write-Host "    5) 重新執行 install-phab-editor.bat" -ForegroundColor Yellow
+    Write-Host "" 
+}
 
 function Close-Browser($procName, $displayName) {
     $procs = Get-Process -Name $procName -ErrorAction SilentlyContinue
@@ -157,6 +172,7 @@ $chromePyLines = @(
 function Install-Chromium($bName, $bPath) {
     if (-not (Test-Path $bPath)) {
         Write-Host "  [$bName] 找不到書籤檔，跳過" -ForegroundColor Yellow
+        Show-FirstRunGuide $bName
         return
     }
     if (-not $py) {
@@ -194,6 +210,7 @@ function Install-BrowserAllProfiles($browserName, $baseDir, $procName) {
                 Where-Object { $_.Name -eq 'Default' -or $_.Name -match '^Profile' }
     if ($profiles.Count -eq 0) {
         Write-Host "  [$browserName] 找不到任何設定檔" -ForegroundColor Yellow
+        Show-FirstRunGuide $browserName
         return
     }
     $ok = $false
@@ -222,11 +239,17 @@ function Install-Firefox() {
     if ($profiles.Count -eq 0) {
         $profiles = Get-ChildItem $base -Directory | Select-Object -First 1
     }
+    if ($profiles.Count -eq 0) {
+        Write-Host "  [Firefox] 找不到任何設定檔" -ForegroundColor Yellow
+        Show-FirstRunGuide "Firefox"
+        return
+    }
     $ok = $false
     foreach ($profile in $profiles) {
         $db = Join-Path $profile.FullName "places.sqlite"
         if (-not (Test-Path $db)) {
             Write-Host "  [Firefox/$($profile.Name)] places.sqlite 不存在，跳過" -ForegroundColor Yellow
+            Show-FirstRunGuide "Firefox/$($profile.Name)"
             continue
         }
         $tmpUrl2 = [IO.Path]::GetTempFileName()
@@ -312,7 +335,7 @@ if not exist "%PS%" (echo [錯誤] 找不到 PowerShell. & pause & exit /b 1)
 cls
 echo.
 echo  ==========================================
-echo    書籤一鍵安裝程式
+echo    Phabricator-Editor-Plugin 安裝程式
 echo    Support: Chrome / Edge / Firefox
 echo  ==========================================
 echo.
