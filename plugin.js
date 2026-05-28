@@ -1314,7 +1314,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       }
       var inner = kids.map(function (c) { return cvtHtml(c, listDepth); }).join('');
       if (tag === 'STRONG' || tag === 'B') return '**' + inner.trim() + '**';
-      if (tag === 'EM' || tag === 'I') return '*' + inner.trim() + '*';
+      if (tag === 'EM' || tag === 'I') return '//' + inner.trim() + '//';
       if (tag === 'CODE') return (node.parentElement && node.parentElement.tagName === 'PRE') ? inner : '`' + inner.trim() + '`';
       if (tag === 'DEL' || tag === 'S') return '~~' + inner.trim() + '~~';
       if (tag === 'A') {
