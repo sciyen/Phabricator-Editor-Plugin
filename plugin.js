@@ -1241,6 +1241,7 @@ a.phabricator-remarkup-embed-image img{background:white;}
       if (node.nodeType === 3) return node.nodeValue.replace(/[\r\n\t]+/g, ' ');
       if (node.nodeType !== 1) return '';
       var tag = node.tagName.toUpperCase(), kids = Array.from(node.childNodes);
+      if (/^(STYLE|SCRIPT|HEAD|META|LINK|NOSCRIPT)$/.test(tag)) return '';
       if (tag === 'BR') return '\n';
       if (tag === 'HR') return '\n\n----\n\n';
       if (tag === 'IMG') return '';
