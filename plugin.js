@@ -1234,11 +1234,79 @@ a.phabricator-remarkup-embed-image img{background:white;}
     if (document.activeElement.type !== 'textarea') return;
     var html = e.clipboardData.getData('text/html'); if (!html) return;
     var doc2 = new DOMParser().parseFromString(html, 'text/html');
-    var tbl = doc2.querySelector('table'); if (!tbl) return;
-    var arr = Array.from(tbl.rows).map(function (row) { return Array.from(row.cells).map(function (c) { c.querySelectorAll('br').forEach((br) => br.replaceWith('\n')); return (c.textContent || '').trim(); }); });
-    var md = arr.map(function (row) { return '\n| ' + row.map(function (c) { return c.replace(/\n/g, '{newline}'); }).join(' | ') + ' |'; }).join('');
+    var body = doc2.body;
+    // Only intercept if there is meaningful formatting to convert
+    if (!body.querySelector('h1,h2,h3,h4,h5,h6,ul,ol,pre,blockquote,table,strong,b,em,i,code,a[href],del,s,hr')) return;
+    function cvtHtml(node, listDepth) {
+      if (node.nodeType === 3) return node.nodeValue.replace(/[\r\n\t]+/g, ' ');
+      if (node.nodeType !== 1) return '';
+      var tag = node.tagName.toUpperCase(), kids = Array.from(node.childNodes);
+      if (tag === 'BR') return '\n';
+      if (tag === 'HR') return '\n\n----\n\n';
+      if (tag === 'IMG') return '';
+      if (/^H[1-6]$/.test(tag)) {
+        var lvl = +tag[1], marks = '#'.repeat(lvl);
+        return '\n' + marks + ' ' + kids.map(function (c) { return cvtHtml(c, listDepth); }).join('').trim() + '\n';
+      }
+      if (tag === 'P') {
+        return '\n' + kids.map(function (c) { return cvtHtml(c, listDepth); }).join('').trim() + '\n';
+      }
+      if (tag === 'DIV') {
+        var di = kids.map(function (c) { return cvtHtml(c, listDepth); }).join('');
+        return /\n$/.test(di) ? di : di + '\n';
+      }
+      if (tag === 'BLOCKQUOTE') {
+        var bi = kids.map(function (c) { return cvtHtml(c, listDepth); }).join('').trim();
+        return '\n' + bi.split('\n').map(function (l) { return '> ' + l; }).join('\n') + '\n';
+      }
+      if (tag === 'PRE') {
+        var codeEl = node.querySelector('code');
+        var preText = (codeEl || node).textContent;
+        var m = codeEl && codeEl.className.match(/language-(\w+)/);
+        return '\n```' + (m ? m[1] : '') + '\n' + preText.replace(/\n$/, '') + '\n```\n';
+      }
+      if (tag === 'UL' || tag === 'OL') {
+        var indent = '  '.repeat(listDepth);
+        var isOl = tag === 'OL';
+        var olIdx = 0;
+        var liLines = [];
+        Array.from(node.children).forEach(function (child) {
+          if (child.tagName === 'LI') {
+            var liTxt = Array.from(child.childNodes).filter(function (c) { return !(c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL')); }).map(function (c) { return cvtHtml(c, listDepth + 1); }).join('').trim();
+            var nested = Array.from(child.childNodes).filter(function (c) { return c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL'); }).map(function (c) { return cvtHtml(c, listDepth + 1); }).join('').replace(/^\n+|\n+$/g, '');
+            var pfx = indent + (isOl ? (++olIdx) + '. ' : '+ ');
+            liLines.push(pfx + liTxt + (nested ? '\n' + nested : ''));
+          } else if (child.tagName === 'UL' || child.tagName === 'OL') {
+            // Nested list as a direct child of the parent list (invalid HTML but
+            // common in content pasted from Google Docs and many websites).
+            var r = cvtHtml(child, listDepth + 1).replace(/^\n+|\n+$/g, '');
+            if (r) liLines.push(r);
+          }
+        });
+        return '\n' + liLines.join('\n') + '\n';
+      }
+      if (tag === 'TABLE') {
+        node.querySelectorAll('br').forEach(function (br) { br.replaceWith('\n'); });
+        var arr = Array.from(node.rows).map(function (row) { return Array.from(row.cells).map(function (c) { return c.textContent.trim(); }); });
+        return '\n' + arr.map(function (row) { return '| ' + row.map(function (c) { return c.replace(/\n/g, '{newline}'); }).join(' | ') + ' |'; }).join('\n') + '\n';
+      }
+      var inner = kids.map(function (c) { return cvtHtml(c, listDepth); }).join('');
+      if (tag === 'STRONG' || tag === 'B') return '**' + inner.trim() + '**';
+      if (tag === 'EM' || tag === 'I') return '*' + inner.trim() + '*';
+      if (tag === 'CODE') return (node.parentElement && node.parentElement.tagName === 'PRE') ? inner : '`' + inner.trim() + '`';
+      if (tag === 'DEL' || tag === 'S') return '~~' + inner.trim() + '~~';
+      if (tag === 'A') {
+        var href = node.getAttribute('href') || '';
+        var linkTxt = inner.trim();
+        if (href && linkTxt && linkTxt !== href) return '[' + linkTxt + '](' + href + ')';
+        return href ? '<' + href + '>' : inner;
+      }
+      return inner;
+    }
+    var result = cvtHtml(body, 0).replace(/\n{3,}/g, '\n\n').trim();
+    if (!result) return;
     var ta = document.activeElement, s = ta.selectionStart, end = ta.selectionEnd;
-    ta.setRangeText(md, s, end, 'select'); e.preventDefault();
+    ta.setRangeText(result, s, end, 'select'); e.preventDefault();
   });
 
   (function () {
