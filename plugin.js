@@ -1237,6 +1237,15 @@ a.phabricator-remarkup-embed-image img{background:white;}
     var body = doc2.body;
     // Only intercept if there is meaningful formatting to convert
     if (!body.querySelector('h1,h2,h3,h4,h5,h6,ul,ol,pre,blockquote,table,strong,b,em,i,code,a[href],del,s,hr')) return;
+    /**
+     * Convert a DOM node subtree into Phabricator/Markdown-like remarkup text.
+     *
+     * Traverses the node and its children and produces plain-text remarkup suitable for insertion into a remarkup textarea (handles headings, paragraphs/divs, lists, blockquotes, fenced code blocks, tables, inline formatting, links, horizontal rules, and basic nested lists).
+     *
+     * @param {Node} node - The DOM node to convert.
+     * @param {number} listDepth - Current list nesting depth used to compute indentation (0 for top level).
+     * @returns {string} The converted remarkup text for the given node subtree.
+     */
     function cvtHtml(node, listDepth) {
       if (node.nodeType === 3) return node.nodeValue.replace(/[\r\n\t]+/g, ' ');
       if (node.nodeType !== 1) return '';
