@@ -1287,9 +1287,12 @@ a.phabricator-remarkup-embed-image img{background:white;}
         return '\n' + liLines.join('\n') + '\n';
       }
       if (tag === 'TABLE') {
-        node.querySelectorAll('br').forEach(function (br) { br.replaceWith('\n'); });
-        var arr = Array.from(node.rows).map(function (row) { return Array.from(row.cells).map(function (c) { return c.textContent.trim(); }); });
-        return '\n' + arr.map(function (row) { return '| ' + row.map(function (c) { return c.replace(/\n/g, '{newline}'); }).join(' | ') + ' |'; }).join('\n') + '\n';
+        var arr = Array.from(node.rows).map(function (row) {
+          return Array.from(row.cells).map(function (c) {
+            return Array.from(c.childNodes).map(function (child) { return cvtHtml(child, 0); }).join('').trim().replace(/\n/g, '{newline}');
+          });
+        });
+        return '\n' + arr.map(function (row) { return '| ' + row.join(' | ') + ' |'; }).join('\n') + '\n';
       }
       var inner = kids.map(function (c) { return cvtHtml(c, listDepth); }).join('');
       if (tag === 'STRONG' || tag === 'B') return '**' + inner.trim() + '**';
