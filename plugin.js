@@ -1278,13 +1278,22 @@ a.phabricator-remarkup-embed-image img{background:white;}
       if (tag === 'UL' || tag === 'OL') {
         var indent = '  '.repeat(listDepth);
         var isOl = tag === 'OL';
-        var olIdx = 0;
+        var olStart = parseInt(node.getAttribute('start'), 10);
+        var olIdx = isOl ? (isNaN(olStart) ? 1 : olStart) : 0;
         var liLines = [];
         Array.from(node.children).forEach(function (child) {
           if (child.tagName === 'LI') {
             var liTxt = Array.from(child.childNodes).filter(function (c) { return !(c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL')); }).map(function (c) { return cvtHtml(c, listDepth + 1); }).join('').trim();
             var nested = Array.from(child.childNodes).filter(function (c) { return c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL'); }).map(function (c) { return cvtHtml(c, listDepth + 1); }).join('').replace(/^\n+|\n+$/g, '');
-            var pfx = indent + (isOl ? (++olIdx) + '. ' : '+ ');
+            var pfx;
+            if (isOl) {
+              var liValue = parseInt(child.getAttribute('value'), 10);
+              var itemNumber = isNaN(liValue) ? olIdx : liValue;
+              pfx = indent + itemNumber + '. ';
+              olIdx = itemNumber + 1;
+            } else {
+              pfx = indent + '+ ';
+            }
             liLines.push(pfx + liTxt + (nested ? '\n' + nested : ''));
           } else if (child.tagName === 'UL' || child.tagName === 'OL') {
             // Nested list as a direct child of the parent list (invalid HTML but
