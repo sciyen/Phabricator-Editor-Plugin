@@ -1307,7 +1307,9 @@ a.phabricator-remarkup-embed-image img{background:white;}
     var result = cvtHtml(body, 0).replace(/\n{3,}/g, '\n\n').trim();
     if (!result) return;
     var ta = document.activeElement, s = ta.selectionStart, end = ta.selectionEnd;
-    ta.setRangeText(result, s, end, 'select'); e.preventDefault();
+    ta.setRangeText(result, s, end, 'select');
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    e.preventDefault();
   });
 
   (function () {
